@@ -4,6 +4,7 @@ Windows 11 için küçük bir araç: **herhangi bir uygulamada seçtiğiniz metn
 
 - Kurulum yönetici yetkisi istemez (kullanıcı profilinize kurulur).
 - Veri toplamaz; okunan metin sadece seçtiğiniz Windows ses sağlayıcısına (SAPI) gider.
+- Otomatik güncelleme: günde bir kez GitHub Releases'a bakar; yeni sürüm varsa panelde gösterir, SHA-256 doğrulamalı indirir ve sessizce kurar (panelden kapatılabilir).
 - Ayarlar ve günlük: `%LOCALAPPDATA%\SesliOkuma\`
 
 <p align="center"><img src="docs/panel.png" width="412" alt="Sesli Okuma ayar paneli"></p>
