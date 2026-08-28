@@ -52,7 +52,7 @@ namespace SesliOkuma
 
         const string Repo = "https://github.com/korayorhun/SesliOkuma";
         const int W = 380, Pad = 24;
-        readonly FlatButton _support = new FlatButton { Primary = true, Size = new Size(W - 2 * Pad, 40) };
+        readonly FlatButton _support = new FlatButton { Accent = true, Size = new Size(W - 2 * Pad, 40) };
         readonly Label _supportNote;
 
         public AboutForm(Icon icon)
@@ -69,7 +69,8 @@ namespace SesliOkuma
             DoubleBuffered = true;
 
             int y = 22;
-            var close = new FlatButton { Text = "\uE711", IconGlyph = true, Size = new Size(36, 36), Location = new Point(W - Pad - 36, y - 2) };
+            var close = new FlatButton { Text = "\uE711", IconGlyph = true, Borderless = true, Size = new Size(36, 36), Location = new Point(W - Pad - 36, y - 2) };
+            Tips.Set(close, L.T("Close"));
             close.Click += delegate { Close(); };
             Controls.Add(close);
 

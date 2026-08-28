@@ -14,29 +14,63 @@ namespace SesliOkuma
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor, true);
             BackColor = Color.Transparent;
             Cursor = Cursors.Hand;
+            TabStop = false;
         }
         protected override void OnMouseEnter(EventArgs e) { Hover = true; Invalidate(); base.OnMouseEnter(e); }
         protected override void OnMouseLeave(EventArgs e) { Hover = false; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnEnabledChanged(EventArgs e) { Invalidate(); base.OnEnabledChanged(e); }
+    }
+
+    // One shared, theme-colored tooltip for icon buttons.
+    public static class Tips
+    {
+        static ToolTip _tip;
+        public static void Set(Control c, string text)
+        {
+            if (_tip == null)
+            {
+                _tip = new ToolTip { OwnerDraw = true, InitialDelay = 500, ReshowDelay = 200, ShowAlways = true };
+                _tip.Draw += delegate (object s, DrawToolTipEventArgs e)
+                {
+                    using (var b = new SolidBrush(Theme.Card)) e.Graphics.FillRectangle(b, e.Bounds);
+                    using (var p = new Pen(Theme.Border)) e.Graphics.DrawRectangle(p, e.Bounds.X, e.Bounds.Y, e.Bounds.Width - 1, e.Bounds.Height - 1);
+                    TextRenderer.DrawText(e.Graphics, e.ToolTipText, Theme.Small, e.Bounds, Theme.Text, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                };
+                _tip.Popup += delegate (object s, PopupEventArgs e) { e.ToolTipSize = new Size(TextRenderer.MeasureText(_tip.GetToolTip(e.AssociatedControl), Theme.Small).Width + 16, 24); };
+            }
+            _tip.SetToolTip(c, text);
+        }
     }
 
     public sealed class FlatButton : SmoothControl
     {
-        public bool Primary;
+        public bool Primary;         // filled accent (main call to action)
+        public bool Accent;          // ghost button with accent glyph/text
+        public bool Borderless;      // no card/border; only the glyph (quiet actions such as dismiss)
         public bool IconGlyph;
-        public string Tip = "";
         public FlatButton() { Size = new Size(44, 44); }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             Theme.Prepare(e.Graphics);
             var r = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
-            Color fill = Primary ? (Hover ? Theme.AccentHover : Theme.Accent) : (Hover ? Theme.CardHover : Theme.Card);
-            using (var p = Theme.RoundRect(r, 10))
+            if (Primary)
             {
-                using (var b = new SolidBrush(fill)) e.Graphics.FillPath(b, p);
-                if (!Primary) using (var pen = new Pen(Theme.Border)) e.Graphics.DrawPath(pen, p);
+                using (var p = Theme.RoundRect(r, 10)) using (var b = new SolidBrush(!Enabled ? Theme.Track : (Hover ? Theme.AccentHover : Theme.Accent))) e.Graphics.FillPath(b, p);
             }
-            Color fg = Primary ? Theme.AccentText : (Hover ? Theme.Text : Theme.Muted);
+            else if (!Borderless)
+            {
+                using (var p = Theme.RoundRect(r, 10))
+                {
+                    using (var b = new SolidBrush(Hover ? Theme.CardHover : Theme.Card)) e.Graphics.FillPath(b, p);
+                    using (var pen = new Pen(Hover && Accent ? Theme.Accent : Theme.Border)) e.Graphics.DrawPath(pen, p);
+                }
+            }
+            else if (Hover)
+            {
+                using (var p = Theme.RoundRect(r, 8)) using (var b = new SolidBrush(Theme.CardHover)) e.Graphics.FillPath(b, p);
+            }
+            Color fg = !Enabled ? Theme.Muted : Primary ? Theme.AccentText : Accent ? (Hover ? Theme.AccentHover : Theme.Accent) : (Hover ? Theme.Text : Theme.Muted);
             TextRenderer.DrawText(e.Graphics, Text, IconGlyph ? Theme.Icon : Theme.Body, ClientRectangle, fg,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
@@ -94,47 +128,49 @@ namespace SesliOkuma
             float cy = Height / 2f, x0 = Pad, x1 = Width - Pad, xv = XFromValue(_value), xz = XFromValue(0);
             using (var pen = new Pen(Theme.Track, 4f) { StartCap = LineCap.Round, EndCap = LineCap.Round }) e.Graphics.DrawLine(pen, x0, cy, x1, cy);
             using (var pen = new Pen(Theme.Accent, 4f) { StartCap = LineCap.Round, EndCap = LineCap.Round }) e.Graphics.DrawLine(pen, Math.Min(xz, xv), cy, Math.Max(xz, xv), cy);
-            for (int v = Minimum; v <= Maximum; v++)
-                using (var b = new SolidBrush(Theme.Muted)) e.Graphics.FillEllipse(b, XFromValue(v) - 1, cy - 1, 2, 2);
+            using (var b = new SolidBrush(Theme.Muted)) e.Graphics.FillEllipse(b, xz - 1.5f, cy - 1.5f, 3, 3);   // "normal" mark only
             float r = Hover || _drag ? 8f : 7f;
             using (var b = new SolidBrush(Theme.Accent)) e.Graphics.FillEllipse(b, xv - r, cy - r, 2 * r, 2 * r);
             using (var b = new SolidBrush(Theme.AccentText)) e.Graphics.FillEllipse(b, xv - 3, cy - 3, 6, 6);
         }
     }
 
-    // Small uppercase caption; optionally carries a clickable accent value with a chevron (e.g. "PRIMARY LANGUAGE · Türkçe ˅").
+    // Small uppercase caption. Optional: a clickable value pill ("PRIMARY LANGUAGE  [Türkçe ˅]") or a collapsible chevron.
     public sealed class CaptionLink : SmoothControl
     {
         public string Caption = "";
         public string Value = "";
-        public bool ChevronOnly;          // caption + chevron, no value (collapsible section header)
+        public bool ChevronOnly;
         public bool Open;
-        public CaptionLink() { Height = 18; Cursor = Cursors.Default; }
+        public CaptionLink() { Height = 22; Cursor = Cursors.Default; }
         protected override void OnMouseEnter(EventArgs e) { Cursor = Value.Length > 0 || ChevronOnly ? Cursors.Hand : Cursors.Default; base.OnMouseEnter(e); }
+
         protected override void OnPaint(PaintEventArgs e)
         {
             Theme.Prepare(e.Graphics);
             var f = TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.VerticalCenter;
             int x = 0;
-            TextRenderer.DrawText(e.Graphics, Caption, Theme.Caption, new Rectangle(x, 0, Width, Height), Hover && ChevronOnly ? Theme.Text : Theme.Muted, f);
+            Color capColor = Hover && ChevronOnly ? Theme.Text : Theme.Muted;
+            TextRenderer.DrawText(e.Graphics, Caption, Theme.Caption, new Rectangle(x, 0, Width, Height), capColor, f);
+            x += TextRenderer.MeasureText(e.Graphics, Caption, Theme.Caption, new Size(1000, Height), f).Width;
             if (ChevronOnly)
             {
-                x += TextRenderer.MeasureText(e.Graphics, Caption, Theme.Caption, new Size(1000, Height), f).Width + 6;
                 using (var small = new Font(Theme.Icon.FontFamily, 7f))
-                    TextRenderer.DrawText(e.Graphics, Open ? "\uE70E" : "\uE70D", small, new Rectangle(x, 1, 14, Height), Hover ? Theme.Text : Theme.Muted, f);
+                    TextRenderer.DrawText(e.Graphics, Open ? "\uE70E" : "\uE70D", small, new Rectangle(x + 6, 1, 14, Height), capColor, f);
                 return;
             }
             if (Value.Length == 0) return;
-            x += TextRenderer.MeasureText(e.Graphics, Caption, Theme.Caption, new Size(1000, Height), f).Width;
-            string sep = "  ·  ";
-            TextRenderer.DrawText(e.Graphics, sep, Theme.Caption, new Rectangle(x, 0, Width - x, Height), Theme.Muted, f);
-            x += TextRenderer.MeasureText(e.Graphics, sep, Theme.Caption, new Size(1000, Height), f).Width;
-            string val = Value.ToUpperInvariant();
-            Color ac = Hover ? Theme.AccentHover : Theme.Accent;
-            TextRenderer.DrawText(e.Graphics, val, Theme.Caption, new Rectangle(x, 0, Width - x, Height), ac, f);
-            x += TextRenderer.MeasureText(e.Graphics, val, Theme.Caption, new Size(1000, Height), f).Width + 4;
-            using (var small = new Font(Theme.Icon.FontFamily, 7f))
-                TextRenderer.DrawText(e.Graphics, "\uE70D", small, new Rectangle(x, 1, 14, Height), ac, f);
+            x += 10;
+            int tw = TextRenderer.MeasureText(e.Graphics, Value, Theme.Caption, new Size(1000, Height), f).Width;
+            var pill = new RectangleF(x, 1.5f, tw + 30, Height - 3);
+            using (var p = Theme.RoundRect(pill, (Height - 3) / 2f))
+            {
+                using (var b = new SolidBrush(Hover ? Theme.AccentSoft : Theme.Card)) e.Graphics.FillPath(b, p);
+                using (var pen = new Pen(Hover ? Theme.Accent : Theme.Border)) e.Graphics.DrawPath(pen, p);
+            }
+            TextRenderer.DrawText(e.Graphics, Value, Theme.Caption, new Rectangle(x + 10, 0, tw + 4, Height), Theme.Accent, f);
+            using (var small = new Font(Theme.Icon.FontFamily, 6.5f))
+                TextRenderer.DrawText(e.Graphics, "\uE70D", small, new Rectangle(x + 10 + tw + 6, 1, 14, Height), Theme.Accent, f);
         }
     }
 
@@ -233,8 +269,7 @@ namespace SesliOkuma
 
         protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
         {
-            using (var pen = new Pen(Theme.Border))
-                e.Graphics.DrawRectangle(pen, 0, 0, e.ToolStrip.Width - 1, e.ToolStrip.Height - 1);
+            using (var pen = new Pen(Theme.Border)) e.Graphics.DrawRectangle(pen, 0, 0, e.ToolStrip.Width - 1, e.ToolStrip.Height - 1);
         }
 
         protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
@@ -242,8 +277,7 @@ namespace SesliOkuma
             if (!e.Item.Selected || !e.Item.Enabled) return;
             Theme.Prepare(e.Graphics);
             var r = new RectangleF(4, 0.5f, e.Item.Width - 8, e.Item.Height - 1);
-            using (var p = Theme.RoundRect(r, 6))
-            using (var b = new SolidBrush(Theme.CardHover)) e.Graphics.FillPath(b, p);
+            using (var p = Theme.RoundRect(r, 6)) using (var b = new SolidBrush(Theme.CardHover)) e.Graphics.FillPath(b, p);
         }
 
         protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
@@ -280,7 +314,7 @@ namespace SesliOkuma
     public sealed class ActionCard : SmoothControl
     {
         readonly FlatButton _action = new FlatButton { Primary = true, Size = new Size(96, 34) };
-        readonly FlatButton _dismiss = new FlatButton { Text = "\uE711", IconGlyph = true, Size = new Size(26, 26) };
+        readonly FlatButton _dismiss = new FlatButton { Text = "\uE711", IconGlyph = true, Borderless = true, Size = new Size(26, 26) };
         public string Title = "", Text2 = "", Note = "";
         public bool ShowDismiss;
         int _progress = -1;
@@ -297,6 +331,7 @@ namespace SesliOkuma
         }
 
         public string ActionText { get { return _action.Text; } set { _action.Text = value; _action.Invalidate(); } }
+        public string DismissTip { set { Tips.Set(_dismiss, value); } }
 
         public void SetIdle() { _progress = -1; _action.Visible = true; _dismiss.Visible = ShowDismiss; Invalidate(); }
         public void SetProgress(int percent, string text) { _progress = Math.Max(0, percent); _progressText = text; _action.Visible = false; _dismiss.Visible = false; Invalidate(); }

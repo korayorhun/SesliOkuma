@@ -547,6 +547,7 @@ namespace SesliOkuma
             AddSave(all);
             AddTranslate(all);
             AddHintSimple(all);
+            AddUi(all);
         }
 
         static void Put2(Dictionary<string, Dictionary<string, string>> all, string lang, string install, string installing, string done, string failed, string noVoice, string settings)
@@ -677,6 +678,98 @@ namespace SesliOkuma
             all["fr"]["HotkeyHintSimple"] = "Clic : modifier";
             all["hi"]["HotkeyHintSimple"] = "क्लिक: बदलें";
             all["zh"]["HotkeyHintSimple"] = "点击：更改";
+        }
+
+        static void AddUi(Dictionary<string, Dictionary<string, string>> all)
+        {
+            all["en"]["SlightlySlow"] = "Slightly slow";
+            all["en"]["SlightlyFast"] = "Slightly fast";
+            all["en"]["Listen"] = "Listen";
+            all["en"]["Close"] = "Close";
+            all["en"]["Copy"] = "Copy";
+            all["en"]["SkipVersionTip"] = "Skip this version";
+            all["en"]["Previous"] = "Previous sentence";
+            all["en"]["Next"] = "Next sentence";
+            all["en"]["Pause"] = "Pause";
+            all["en"]["Resume"] = "Resume";
+            all["en"]["SpeedTip"] = "Speed";
+            all["hi"]["SlightlySlow"] = "थोड़ा धीमा";
+            all["hi"]["SlightlyFast"] = "थोड़ा तेज़";
+            all["hi"]["Listen"] = "सुनें";
+            all["hi"]["Close"] = "बंद करें";
+            all["hi"]["Copy"] = "कॉपी";
+            all["hi"]["SkipVersionTip"] = "यह संस्करण छोड़ें";
+            all["hi"]["Previous"] = "पिछला वाक्य";
+            all["hi"]["Next"] = "अगला वाक्य";
+            all["hi"]["Pause"] = "रोकें";
+            all["hi"]["Resume"] = "जारी रखें";
+            all["hi"]["SpeedTip"] = "गति";
+            all["fr"]["SlightlySlow"] = "Un peu lent";
+            all["fr"]["SlightlyFast"] = "Un peu rapide";
+            all["fr"]["Listen"] = "Écouter";
+            all["fr"]["Close"] = "Fermer";
+            all["fr"]["Copy"] = "Copier";
+            all["fr"]["SkipVersionTip"] = "Ignorer cette version";
+            all["fr"]["Previous"] = "Phrase précédente";
+            all["fr"]["Next"] = "Phrase suivante";
+            all["fr"]["Pause"] = "Pause";
+            all["fr"]["Resume"] = "Reprendre";
+            all["fr"]["SpeedTip"] = "Vitesse";
+            all["tr"]["SlightlySlow"] = "Biraz yavaş";
+            all["tr"]["SlightlyFast"] = "Biraz hızlı";
+            all["tr"]["Listen"] = "Dinle";
+            all["tr"]["Close"] = "Kapat";
+            all["tr"]["Copy"] = "Kopyala";
+            all["tr"]["SkipVersionTip"] = "Bu sürümü geç";
+            all["tr"]["Previous"] = "Önceki cümle";
+            all["tr"]["Next"] = "Sonraki cümle";
+            all["tr"]["Pause"] = "Duraklat";
+            all["tr"]["Resume"] = "Devam";
+            all["tr"]["SpeedTip"] = "Hız";
+            all["ar"]["SlightlySlow"] = "أبطأ قليلاً";
+            all["ar"]["SlightlyFast"] = "أسرع قليلاً";
+            all["ar"]["Listen"] = "استماع";
+            all["ar"]["Close"] = "إغلاق";
+            all["ar"]["Copy"] = "نسخ";
+            all["ar"]["SkipVersionTip"] = "تخطي هذا الإصدار";
+            all["ar"]["Previous"] = "الجملة السابقة";
+            all["ar"]["Next"] = "الجملة التالية";
+            all["ar"]["Pause"] = "إيقاف مؤقت";
+            all["ar"]["Resume"] = "متابعة";
+            all["ar"]["SpeedTip"] = "السرعة";
+            all["es"]["SlightlySlow"] = "Algo lento";
+            all["es"]["SlightlyFast"] = "Algo rápido";
+            all["es"]["Listen"] = "Escuchar";
+            all["es"]["Close"] = "Cerrar";
+            all["es"]["Copy"] = "Copiar";
+            all["es"]["SkipVersionTip"] = "Omitir esta versión";
+            all["es"]["Previous"] = "Frase anterior";
+            all["es"]["Next"] = "Frase siguiente";
+            all["es"]["Pause"] = "Pausa";
+            all["es"]["Resume"] = "Continuar";
+            all["es"]["SpeedTip"] = "Velocidad";
+            all["pt"]["SlightlySlow"] = "Um pouco lento";
+            all["pt"]["SlightlyFast"] = "Um pouco rápido";
+            all["pt"]["Listen"] = "Ouvir";
+            all["pt"]["Close"] = "Fechar";
+            all["pt"]["Copy"] = "Copiar";
+            all["pt"]["SkipVersionTip"] = "Ignorar esta versão";
+            all["pt"]["Previous"] = "Frase anterior";
+            all["pt"]["Next"] = "Próxima frase";
+            all["pt"]["Pause"] = "Pausar";
+            all["pt"]["Resume"] = "Continuar";
+            all["pt"]["SpeedTip"] = "Velocidade";
+            all["zh"]["SlightlySlow"] = "稍慢";
+            all["zh"]["SlightlyFast"] = "稍快";
+            all["zh"]["Listen"] = "试听";
+            all["zh"]["Close"] = "关闭";
+            all["zh"]["Copy"] = "复制";
+            all["zh"]["SkipVersionTip"] = "跳过此版本";
+            all["zh"]["Previous"] = "上一句";
+            all["zh"]["Next"] = "下一句";
+            all["zh"]["Pause"] = "暂停";
+            all["zh"]["Resume"] = "继续";
+            all["zh"]["SpeedTip"] = "速度";
         }
 
         static void AddReaderBar(Dictionary<string, Dictionary<string, string>> all)

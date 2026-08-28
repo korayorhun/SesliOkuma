@@ -149,17 +149,16 @@ namespace SesliOkuma
         [System.Runtime.InteropServices.DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
 
         readonly Reader _reader;
-        readonly Action<int> _rateDelta;      // +1 / -1 speed steps
+        readonly Action<int> _rateDelta;      // delta in Rate units
         readonly Func<int> _rate;
         readonly FlatButton _pause = new FlatButton { IconGlyph = true, Size = new Size(34, 34) };
         readonly FlatButton _back = new FlatButton { IconGlyph = true, Size = new Size(34, 34), Text = "\uE892" };
         readonly FlatButton _skip = new FlatButton { IconGlyph = true, Size = new Size(34, 34), Text = "\uE893" };
-        readonly FlatButton _slower = new FlatButton { Size = new Size(30, 34), Text = "−" };
-        readonly FlatButton _faster = new FlatButton { Size = new Size(30, 34), Text = "+" };
         readonly FlatButton _close = new FlatButton { IconGlyph = true, Size = new Size(34, 34), Text = "\uE711" };
-        readonly Label _speed = new Label { AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, BackColor = Color.Transparent };
+        readonly FlatButton _speed = new FlatButton { Size = new Size(52, 34), Borderless = true };
         readonly Label _text = new Label { AutoSize = false, TextAlign = ContentAlignment.MiddleLeft, BackColor = Color.Transparent, AutoEllipsis = true };
-        const int W = 620, H = 56;
+        const int W = 560, H = 56;
+        static readonly int[] Steps = { -4, -2, 0, 2, 4, 6 };
 
         public ReaderBar(Reader reader, Func<int> rate, Action<int> rateDelta)
         {
@@ -171,20 +170,24 @@ namespace SesliOkuma
             int x = 10;
             _back.Location = new Point(x, 11); x += 38;
             _pause.Location = new Point(x, 11); x += 38;
-            _skip.Location = new Point(x, 11); x += 46;
-            _slower.Location = new Point(x, 11); x += 32;
-            _speed.Font = Theme.Small; _speed.ForeColor = Theme.Muted; _speed.SetBounds(x, 11, 42, 34); x += 44;
-            _faster.Location = new Point(x, 11); x += 40;
+            _skip.Location = new Point(x, 11); x += 42;
+            _speed.Location = new Point(x, 11); x += 60;
             _text.Font = Theme.Body; _text.ForeColor = Theme.Text; _text.SetBounds(x, 17, W - x - 58, 22);
             _close.Location = new Point(W - 44, 11);
-            Controls.AddRange(new Control[] { _back, _pause, _skip, _slower, _speed, _faster, _text, _close });
+            _back.Borderless = _pause.Borderless = _skip.Borderless = _close.Borderless = true;
+            Controls.AddRange(new Control[] { _back, _pause, _skip, _speed, _text, _close });
+            Tips.Set(_back, L.T("Previous")); Tips.Set(_skip, L.T("Next")); Tips.Set(_close, L.T("Stop")); Tips.Set(_speed, L.T("SpeedTip"));
 
             _pause.Click += delegate { _reader.TogglePause(); };
             _skip.Click += delegate { _reader.Skip(); };
             _back.Click += delegate { _reader.Back(); };
             _close.Click += delegate { _reader.Stop(false); };
-            _slower.Click += delegate { _rateDelta(-1); _reader.Restart(); Sync(); };
-            _faster.Click += delegate { _rateDelta(1); _reader.Restart(); Sync(); };
+            _speed.Click += delegate
+            {
+                int cur = _rate(); int next = Steps[0];
+                for (int i = 0; i < Steps.Length; i++) if (Steps[i] > cur) { next = Steps[i]; break; }
+                _rateDelta(next - cur); _reader.Restart(); Sync();
+            };
             _reader.Changed += Sync;
             Sync();
         }
@@ -211,6 +214,7 @@ namespace SesliOkuma
         {
             if (IsDisposed) return;
             _pause.Text = _reader.Paused ? "\uE768" : "\uE769";
+            Tips.Set(_pause, _reader.Paused ? L.T("Resume") : L.T("Pause"));
             _speed.Text = (1.0 + _rate() * 0.1).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "×";
             _text.Text = _reader.Current;
             Invalidate();

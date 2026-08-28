@@ -202,7 +202,7 @@ namespace SesliOkuma
             if (show)
             {
                 if (_bar == null || _bar.IsDisposed)
-                    _bar = new ReaderBar(Reader, delegate { return Settings.Rate; }, delegate (int d) { Settings.Rate = Math.Max(-10, Math.Min(10, Settings.Rate + 2 * d)); Settings.Save(); });
+                    _bar = new ReaderBar(Reader, delegate { return Settings.Rate; }, delegate (int d) { Settings.Rate = Math.Max(-10, Math.Min(10, Settings.Rate + d)); Settings.Save(); });
                 if (!_bar.Visible) { _bar.Place(); _bar.Show(); }
             }
             else if (_bar != null && !_bar.IsDisposed && _bar.Visible) _bar.Hide();

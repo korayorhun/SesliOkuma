@@ -16,6 +16,8 @@ namespace SesliOkuma
         public static void Load()
         {
             Dark = ReadDword(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "AppsUseLightTheme", 1) == 0;
+            string forced = Environment.GetEnvironmentVariable("SESLIOKUMA_THEME");
+            if (forced == "light") Dark = false; else if (forced == "dark") Dark = true;
             if (Dark)
             {
                 Bg = Rgb(0x16171D); Card = Rgb(0x1F2129); CardHover = Rgb(0x272A34); Border = Rgb(0x2E3140);
