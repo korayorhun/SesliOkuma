@@ -133,7 +133,7 @@ namespace SesliOkuma
             y = Caption(L.T("Other"), y);
             y = Picker(_otherPicker, y, false);
 
-            y = Caption(L.T("Speed"), y);
+            y = CaptionIn(_body, L.T("Speed"), y, 190);
             _rateValue.Font = Theme.Small; _rateValue.ForeColor = Theme.Muted; _rateValue.TextAlign = ContentAlignment.TopRight; _rateValue.BackColor = Color.Transparent;
             _rateValue.SetBounds(W - Pad - 160, y - Cap, 160, 16);
             _body.Controls.Add(_rateValue);

@@ -574,7 +574,7 @@ namespace SesliOkuma
         {
             all["es"]["Advanced"] = "Avanzado";
             all["es"]["TranslateHotkey"] = "ATAJO TRADUCIR Y LEER";
-            all["es"]["DeepLKey"] = "CLAVE API DE DEEPL (GRATIS)";
+            all["es"]["DeepLKey"] = "CLAVE DEEPL (OPCIONAL)";
             all["es"]["GetKey"] = "Obtener clave gratis →";
             all["es"]["TranslateNeedsKey"] = "La traducción necesita una clave DeepL — abre Avanzado en el panel";
             all["es"]["Translating"] = "Traduciendo…";
@@ -586,7 +586,7 @@ namespace SesliOkuma
             all["es"]["KeySaved"] = "Clave guardada";
             all["ar"]["Advanced"] = "متقدم";
             all["ar"]["TranslateHotkey"] = "اختصار الترجمة والقراءة";
-            all["ar"]["DeepLKey"] = "مفتاح DEEPL API (مجاني)";
+            all["ar"]["DeepLKey"] = "مفتاح DEEPL (اختياري)";
             all["ar"]["GetKey"] = "احصل على مفتاح مجاني →";
             all["ar"]["TranslateNeedsKey"] = "الترجمة تحتاج مفتاح DeepL — افتح «متقدم» في اللوحة";
             all["ar"]["Translating"] = "جارٍ الترجمة…";
@@ -598,7 +598,7 @@ namespace SesliOkuma
             all["ar"]["KeySaved"] = "تم حفظ المفتاح";
             all["zh"]["Advanced"] = "高级";
             all["zh"]["TranslateHotkey"] = "翻译并朗读快捷键";
-            all["zh"]["DeepLKey"] = "DEEPL API 密钥（免费）";
+            all["zh"]["DeepLKey"] = "DEEPL 密钥（可选）";
             all["zh"]["GetKey"] = "获取免费密钥 →";
             all["zh"]["TranslateNeedsKey"] = "翻译需要 DeepL 密钥 — 请在面板中打开“高级”";
             all["zh"]["Translating"] = "正在翻译…";
@@ -610,7 +610,7 @@ namespace SesliOkuma
             all["zh"]["KeySaved"] = "密钥已保存";
             all["en"]["Advanced"] = "Advanced";
             all["en"]["TranslateHotkey"] = "TRANSLATE & READ SHORTCUT";
-            all["en"]["DeepLKey"] = "DEEPL API KEY (FREE)";
+            all["en"]["DeepLKey"] = "DEEPL KEY (OPTIONAL)";
             all["en"]["GetKey"] = "Get a free key →";
             all["en"]["TranslateNeedsKey"] = "Translation needs a DeepL key — open Advanced in the panel";
             all["en"]["Translating"] = "Translating…";
@@ -622,7 +622,7 @@ namespace SesliOkuma
             all["en"]["KeySaved"] = "Key saved";
             all["fr"]["Advanced"] = "Avancé";
             all["fr"]["TranslateHotkey"] = "RACCOURCI TRADUIRE ET LIRE";
-            all["fr"]["DeepLKey"] = "CLÉ API DEEPL (GRATUITE)";
+            all["fr"]["DeepLKey"] = "CLÉ DEEPL (FACULTATIVE)";
             all["fr"]["GetKey"] = "Obtenir une clé gratuite →";
             all["fr"]["TranslateNeedsKey"] = "La traduction nécessite une clé DeepL — ouvrez Avancé dans le panneau";
             all["fr"]["Translating"] = "Traduction…";
@@ -634,7 +634,7 @@ namespace SesliOkuma
             all["fr"]["KeySaved"] = "Clé enregistrée";
             all["hi"]["Advanced"] = "उन्नत";
             all["hi"]["TranslateHotkey"] = "अनुवाद करें और पढ़ें शॉर्टकट";
-            all["hi"]["DeepLKey"] = "DEEPL API कुंजी (मुफ़्त)";
+            all["hi"]["DeepLKey"] = "DEEPL कुंजी (वैकल्पिक)";
             all["hi"]["GetKey"] = "मुफ़्त कुंजी प्राप्त करें →";
             all["hi"]["TranslateNeedsKey"] = "अनुवाद के लिए DeepL कुंजी चाहिए — पैनल में उन्नत खोलें";
             all["hi"]["Translating"] = "अनुवाद हो रहा है…";
@@ -646,7 +646,7 @@ namespace SesliOkuma
             all["hi"]["KeySaved"] = "कुंजी सहेजी गई";
             all["tr"]["Advanced"] = "Gelişmiş";
             all["tr"]["TranslateHotkey"] = "ÇEVİR VE OKU KISAYOLU";
-            all["tr"]["DeepLKey"] = "DEEPL API ANAHTARI (ÜCRETSİZ)";
+            all["tr"]["DeepLKey"] = "DEEPL ANAHTARI (İSTEĞE BAĞLI)";
             all["tr"]["GetKey"] = "Ücretsiz anahtar al →";
             all["tr"]["TranslateNeedsKey"] = "Çeviri için DeepL anahtarı gerekir — panelde Gelişmiş bölümüne girin";
             all["tr"]["Translating"] = "Çevriliyor…";
@@ -658,7 +658,7 @@ namespace SesliOkuma
             all["tr"]["KeySaved"] = "Anahtar kaydedildi";
             all["pt"]["Advanced"] = "Avançado";
             all["pt"]["TranslateHotkey"] = "ATALHO TRADUZIR E LER";
-            all["pt"]["DeepLKey"] = "CHAVE DA API DEEPL (GRÁTIS)";
+            all["pt"]["DeepLKey"] = "CHAVE DEEPL (OPCIONAL)";
             all["pt"]["GetKey"] = "Obter chave grátis →";
             all["pt"]["TranslateNeedsKey"] = "A tradução precisa de uma chave DeepL — abra Avançado no painel";
             all["pt"]["Translating"] = "Traduzindo…";
@@ -776,14 +776,14 @@ namespace SesliOkuma
 
         static void AddFreeTranslate(Dictionary<string, Dictionary<string, string>> all)
         {
-            all["fr"]["DeepLKey"] = "CLÉ DEEPL — FACULTATIVE, MEILLEURES TRADUCTIONS"; all["fr"]["FreeQuota"] = "La limite de traduction gratuite du jour est atteinte (environ 5 000 caractères)"; all["fr"]["FreeEngine"] = "Traduction gratuite (MyMemory) · sans clé";
-            all["zh"]["DeepLKey"] = "DEEPL 密钥 — 可选，翻译质量更高"; all["zh"]["FreeQuota"] = "今日免费翻译额度已用完（约 5,000 字符）"; all["zh"]["FreeEngine"] = "免费翻译（MyMemory）· 无需密钥";
-            all["ar"]["DeepLKey"] = "مفتاح DEEPL — اختياري، ترجمة أفضل"; all["ar"]["FreeQuota"] = "انتهى حد الترجمة المجانية لهذا اليوم (نحو 5000 حرف)"; all["ar"]["FreeEngine"] = "ترجمة مجانية (MyMemory) · بدون مفتاح";
-            all["pt"]["DeepLKey"] = "CHAVE DEEPL — OPCIONAL, TRADUÇÕES MELHORES"; all["pt"]["FreeQuota"] = "O limite gratuito de tradução de hoje acabou (cerca de 5.000 caracteres)"; all["pt"]["FreeEngine"] = "Tradução gratuita (MyMemory) · sem chave";
-            all["tr"]["DeepLKey"] = "DEEPL ANAHTARI — İSTEĞE BAĞLI, DAHA İYİ ÇEVİRİ"; all["tr"]["FreeQuota"] = "Bugünlük ücretsiz çeviri sınırı doldu (yaklaşık 5.000 karakter)"; all["tr"]["FreeEngine"] = "Ücretsiz çeviri (MyMemory) · anahtar gerekmez";
-            all["hi"]["DeepLKey"] = "DEEPL कुंजी — वैकल्पिक, बेहतर अनुवाद"; all["hi"]["FreeQuota"] = "आज की मुफ़्त अनुवाद सीमा समाप्त (लगभग 5,000 अक्षर)"; all["hi"]["FreeEngine"] = "मुफ़्त अनुवाद (MyMemory) · कुंजी की ज़रूरत नहीं";
-            all["en"]["DeepLKey"] = "DEEPL KEY — OPTIONAL, BETTER TRANSLATIONS"; all["en"]["FreeQuota"] = "Today's free translation limit is used up (about 5,000 characters)"; all["en"]["FreeEngine"] = "Free translation (MyMemory) · no key needed";
-            all["es"]["DeepLKey"] = "CLAVE DEEPL — OPCIONAL, MEJORES TRADUCCIONES"; all["es"]["FreeQuota"] = "Se agotó el límite de traducción gratuita de hoy (unos 5.000 caracteres)"; all["es"]["FreeEngine"] = "Traducción gratuita (MyMemory) · sin clave";
+            all["fr"]["DeepLKey"] = "CLÉ DEEPL (FACULTATIVE)"; all["fr"]["FreeQuota"] = "La limite de traduction gratuite du jour est atteinte (environ 5 000 caractères)"; all["fr"]["FreeEngine"] = "Traduction gratuite (MyMemory) · sans clé";
+            all["zh"]["DeepLKey"] = "DEEPL 密钥（可选）"; all["zh"]["FreeQuota"] = "今日免费翻译额度已用完（约 5,000 字符）"; all["zh"]["FreeEngine"] = "免费翻译（MyMemory）· 无需密钥";
+            all["ar"]["DeepLKey"] = "مفتاح DEEPL (اختياري)"; all["ar"]["FreeQuota"] = "انتهى حد الترجمة المجانية لهذا اليوم (نحو 5000 حرف)"; all["ar"]["FreeEngine"] = "ترجمة مجانية (MyMemory) · بدون مفتاح";
+            all["pt"]["DeepLKey"] = "CHAVE DEEPL (OPCIONAL)"; all["pt"]["FreeQuota"] = "O limite gratuito de tradução de hoje acabou (cerca de 5.000 caracteres)"; all["pt"]["FreeEngine"] = "Tradução gratuita (MyMemory) · sem chave";
+            all["tr"]["DeepLKey"] = "DEEPL ANAHTARI (İSTEĞE BAĞLI)"; all["tr"]["FreeQuota"] = "Bugünlük ücretsiz çeviri sınırı doldu (yaklaşık 5.000 karakter)"; all["tr"]["FreeEngine"] = "Ücretsiz çeviri (MyMemory) · anahtar gerekmez";
+            all["hi"]["DeepLKey"] = "DEEPL कुंजी (वैकल्पिक)"; all["hi"]["FreeQuota"] = "आज की मुफ़्त अनुवाद सीमा समाप्त (लगभग 5,000 अक्षर)"; all["hi"]["FreeEngine"] = "मुफ़्त अनुवाद (MyMemory) · कुंजी की ज़रूरत नहीं";
+            all["en"]["DeepLKey"] = "DEEPL KEY (OPTIONAL)"; all["en"]["FreeQuota"] = "Today's free translation limit is used up (about 5,000 characters)"; all["en"]["FreeEngine"] = "Free translation (MyMemory) · no key needed";
+            all["es"]["DeepLKey"] = "CLAVE DEEPL (OPCIONAL)"; all["es"]["FreeQuota"] = "Se agotó el límite de traducción gratuita de hoy (unos 5.000 caracteres)"; all["es"]["FreeEngine"] = "Traducción gratuita (MyMemory) · sin clave";
         }
 
         static void AddMore(Dictionary<string, Dictionary<string, string>> all)
