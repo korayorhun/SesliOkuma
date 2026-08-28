@@ -28,11 +28,12 @@
 - **8 interface languages** — English, Türkçe, 中文, हिन्दी, Español, Français, العربية, Português. Switch instantly; the installer speaks them too.
 - **Your shortcut** — click the field, press a combination; conflicts are reported and the old shortcut kept.
 - **Auto-update** — daily check against GitHub Releases, SHA-256-verified download, silent install, restart. Can be turned off.
+- **Accessibility extras** (under *Advanced*) — *read what the mouse points at*: rest the pointer on any button or text and it is spoken; high-contrast Windows themes are honored; a tiny words-read counter.
 - **Respectful** — per-user install, no admin rights, **no telemetry**; text goes only to the Windows speech provider (SAPI) you choose. MIT licensed.
 
 ## Install
 
-Download the latest `SesliOkuma-Setup-x.y.z.exe` from **[Releases](https://github.com/korayorhun/SesliOkuma/releases/latest)** and run it (no admin rights). The package is not code-signed yet, so SmartScreen may show "unrecognized app": *More info → Run anyway*.
+Download the latest `SesliOkuma-Setup-x.y.z.exe` (or the portable `SesliOkuma-Portable-x.y.z.zip` — unzip and run, nothing else) from **[Releases](https://github.com/korayorhun/SesliOkuma/releases/latest)** and run it (no admin rights). The package is not code-signed yet, so SmartScreen may show "unrecognized app": *More info → Run anyway*.
 
 | Action | How |
 |---|---|
@@ -44,6 +45,7 @@ Download the latest `SesliOkuma-Setup-x.y.z.exe` from **[Releases](https://githu
 | Settings | click the tray icon (or run the exe again) |
 | Interface language / About | globe icon in the panel |
 | Save as audio (WAV) | tray icon → right-click → Save selection as audio file |
+| Read a text file | right-click a `.txt` / `.md` file in Explorer → *Read with Sesli Okuma* |
 | Quit | tray icon → right-click → Exit |
 
 ## Build from source
@@ -77,6 +79,8 @@ Windows 10/11 için küçük bir sistem tepsisi aracı: **herhangi bir uygulamad
 - **Dile göre ses** — seçili metnin dili algılanır; ana dil metinleri ana dil sesiyle, diğerleri ikinci sesle okunur.
 - **8 arayüz dili**, **kendi kısayolunuz**, **otomatik güncelleme** (SHA-256 doğrulamalı, kapatılabilir).
 - Kurulum yönetici yetkisi istemez; **veri toplamaz**. Ayarlar ve günlük: `%LOCALAPPDATA%\SesliOkuma\`.
+
+**Dosya oku:** Explorer'da bir `.txt` / `.md` dosyasına sağ tık → *Sesli Okuma ile oku*. **Erişilebilirlik** (Gelişmiş): fareyle üzerine gelince oku, yüksek kontrast desteği, okunan kelime sayacı. **Taşınabilir sürüm:** Releases'ta zip.
 
 **Kurulum:** [Releases](https://github.com/korayorhun/SesliOkuma/releases/latest) sayfasından `SesliOkuma-Setup-x.y.z.exe`. İmzasız olduğu için SmartScreen uyarısı çıkabilir: *Ek bilgi → Yine de çalıştır*.
 

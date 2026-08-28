@@ -1,4 +1,4 @@
-; Inno Setup script for Sesli Okuma (per-user install, no admin rights needed)
+﻿; Inno Setup script for Sesli Okuma (per-user install, no admin rights needed)
 #define MyAppName "Sesli Okuma"
 #define MyAppVersion "1.8.0"
 #define MyAppPublisher "Koray Orhun"
@@ -45,24 +45,31 @@ Name: "hindi"; MessagesFile: "compiler:Languages\Hindi.islu"; InfoAfterFile: "af
 [CustomMessages]
 english.StartupTask=Start with Windows
 english.RunNow=Start Sesli Okuma now
+english.ContextMenu=Read with Sesli Okuma
 english.Uninstall=Uninstall
 turkish.StartupTask=Windows ile birlikte başlat
 turkish.RunNow=Sesli Okuma'yı şimdi başlat
+turkish.ContextMenu=Sesli Okuma ile oku
 turkish.Uninstall=Kaldır
 spanish.StartupTask=Iniciar con Windows
 spanish.RunNow=Iniciar Sesli Okuma ahora
+spanish.ContextMenu=Leer con Sesli Okuma
 spanish.Uninstall=Desinstalar
 french.StartupTask=Démarrer avec Windows
 french.RunNow=Lancer Sesli Okuma maintenant
+french.ContextMenu=Lire avec Sesli Okuma
 french.Uninstall=Désinstaller
 portuguese.StartupTask=Iniciar com o Windows
 portuguese.RunNow=Iniciar o Sesli Okuma agora
+portuguese.ContextMenu=Ler com Sesli Okuma
 portuguese.Uninstall=Desinstalar
 arabic.StartupTask=التشغيل مع Windows
 arabic.RunNow=تشغيل Sesli Okuma الآن
+arabic.ContextMenu=قراءة باستخدام Sesli Okuma
 arabic.Uninstall=إزالة
 hindi.StartupTask=Windows के साथ शुरू करें
 hindi.RunNow=Sesli Okuma अभी शुरू करें
+hindi.ContextMenu=Sesli Okuma से पढ़ें
 hindi.Uninstall=अनइंस्टॉल
 
 [Tasks]
@@ -81,6 +88,15 @@ Name: "{userstartup}\SesliOkuma"; Filename: "{app}\{#MyAppExeName}"; Tasks: star
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:RunNow}"; Flags: nowait postinstall skipifsilent
 Filename: "{app}\{#MyAppExeName}"; Flags: nowait; Check: IsSelfUpdate
+
+[Registry]
+; "Read with Sesli Okuma" on plain-text files (per user; removed on uninstall)
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.txt\shell\SesliOkuma"; ValueType: string; ValueName: ""; ValueData: "{cm:ContextMenu}"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.txt\shell\SesliOkuma"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\{#MyAppExeName}"
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.txt\shell\SesliOkuma\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" --read ""%1"""
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.md\shell\SesliOkuma"; ValueType: string; ValueName: ""; ValueData: "{cm:ContextMenu}"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.md\shell\SesliOkuma"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\{#MyAppExeName}"
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.md\shell\SesliOkuma\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" --read ""%1"""
 
 [UninstallRun]
 Filename: "{sys}\taskkill.exe"; Parameters: "/IM {#MyAppExeName} /F"; Flags: runhidden; RunOnceId: "KillSesliOkuma"

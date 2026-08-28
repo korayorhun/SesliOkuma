@@ -15,6 +15,10 @@ namespace SesliOkuma
         public string TranslateHotkey = "Ctrl+Alt+T";
         public string DeepLKey = "";
         public bool AdvancedOpen = false;
+        public bool HoverRead = false;
+        public long WordsTotal = 0;
+        public long WordsToday = 0;
+        public string StatsDay = "";
         public int Rate = 0;
         public bool AutoUpdate = true;
         public bool ShowReaderBar = true;
@@ -56,6 +60,10 @@ namespace SesliOkuma
                         case "TranslateHotkey": s.TranslateHotkey = val; break;
                         case "DeepLKey": s.DeepLKey = val; break;
                         case "AdvancedOpen": s.AdvancedOpen = val == "1"; break;
+                        case "HoverRead": s.HoverRead = val == "1"; break;
+                        case "WordsTotal": long.TryParse(val, out s.WordsTotal); break;
+                        case "WordsToday": long.TryParse(val, out s.WordsToday); break;
+                        case "StatsDay": s.StatsDay = val; break;
                         case "Rate": { int r; if (int.TryParse(val, out r)) s.Rate = r; break; }
                         case "AutoUpdate": s.AutoUpdate = val != "0"; break;
                         case "ShowReaderBar": s.ShowReaderBar = val != "0"; break;
@@ -68,13 +76,23 @@ namespace SesliOkuma
             return s;
         }
 
+        public void CountWords(string text)
+        {
+            string today = DateTime.Now.ToString("yyyy-MM-dd");
+            if (StatsDay != today) { StatsDay = today; WordsToday = 0; }
+            long n = 0; bool inWord = false;
+            foreach (char ch in text) { if (char.IsLetterOrDigit(ch)) { if (!inWord) { n++; inWord = true; } } else inWord = false; }
+            WordsToday += n; WordsTotal += n;
+            Save();
+        }
+
         public void Save()
         {
             try
             {
                 File.WriteAllLines(FilePath, new[] {
                     "PrimaryVoice=" + PrimaryVoiceId, "OtherVoice=" + OtherVoiceId, "PrimaryLang=" + PrimaryLang,
-                    "Language=" + Language, "Hotkey=" + Hotkey, "TranslateHotkey=" + TranslateHotkey, "DeepLKey=" + DeepLKey, "AdvancedOpen=" + (AdvancedOpen ? "1" : "0"), "Rate=" + Rate,
+                    "Language=" + Language, "Hotkey=" + Hotkey, "TranslateHotkey=" + TranslateHotkey, "DeepLKey=" + DeepLKey, "AdvancedOpen=" + (AdvancedOpen ? "1" : "0"), "HoverRead=" + (HoverRead ? "1" : "0"), "WordsTotal=" + WordsTotal, "WordsToday=" + WordsToday, "StatsDay=" + StatsDay, "Rate=" + Rate,
                     "AutoUpdate=" + (AutoUpdate ? "1" : "0"), "ShowReaderBar=" + (ShowReaderBar ? "1" : "0"), "SkipVersion=" + SkipVersion, "LastUpdateCheck=" + LastUpdateCheck.ToString("o") });
             }
             catch (Exception ex) { Logger.Log("settings save: " + ex.Message); }

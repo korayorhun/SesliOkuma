@@ -549,6 +549,7 @@ namespace SesliOkuma
             AddHintSimple(all);
             AddUi(all);
             AddFreeTranslate(all);
+            AddMore(all);
         }
 
         static void Put2(Dictionary<string, Dictionary<string, string>> all, string lang, string install, string installing, string done, string failed, string noVoice, string settings)
@@ -783,6 +784,18 @@ namespace SesliOkuma
             all["hi"]["DeepLKey"] = "DEEPL कुंजी — वैकल्पिक, बेहतर अनुवाद"; all["hi"]["FreeQuota"] = "आज की मुफ़्त अनुवाद सीमा समाप्त (लगभग 5,000 अक्षर)"; all["hi"]["FreeEngine"] = "मुफ़्त अनुवाद (MyMemory) · कुंजी की ज़रूरत नहीं";
             all["en"]["DeepLKey"] = "DEEPL KEY — OPTIONAL, BETTER TRANSLATIONS"; all["en"]["FreeQuota"] = "Today's free translation limit is used up (about 5,000 characters)"; all["en"]["FreeEngine"] = "Free translation (MyMemory) · no key needed";
             all["es"]["DeepLKey"] = "CLAVE DEEPL — OPCIONAL, MEJORES TRADUCCIONES"; all["es"]["FreeQuota"] = "Se agotó el límite de traducción gratuita de hoy (unos 5.000 caracteres)"; all["es"]["FreeEngine"] = "Traducción gratuita (MyMemory) · sin clave";
+        }
+
+        static void AddMore(Dictionary<string, Dictionary<string, string>> all)
+        {
+            all["fr"]["HoverRead"] = "Lire ce que la souris pointe (accessibilité)"; all["fr"]["Stats"] = "Aujourd'hui {0} mots  ·  total {1}"; all["fr"]["ContextMenu"] = "Lire avec Sesli Okuma";
+            all["tr"]["HoverRead"] = "Fareyle üzerine gelince oku (erişilebilirlik)"; all["tr"]["Stats"] = "Bugün {0} kelime  ·  toplam {1}"; all["tr"]["ContextMenu"] = "Sesli Okuma ile oku";
+            all["ar"]["HoverRead"] = "قراءة ما يشير إليه الفأرة (إتاحة)"; all["ar"]["Stats"] = "اليوم {0} كلمة  ·  المجموع {1}"; all["ar"]["ContextMenu"] = "قراءة باستخدام Sesli Okuma";
+            all["hi"]["HoverRead"] = "माउस जिस पर हो उसे पढ़ें (सुलभता)"; all["hi"]["Stats"] = "आज {0} शब्द  ·  कुल {1}"; all["hi"]["ContextMenu"] = "Sesli Okuma से पढ़ें";
+            all["en"]["HoverRead"] = "Read what the mouse points at (accessibility)"; all["en"]["Stats"] = "Today {0} words  ·  total {1}"; all["en"]["ContextMenu"] = "Read with Sesli Okuma";
+            all["es"]["HoverRead"] = "Leer lo que señala el ratón (accesibilidad)"; all["es"]["Stats"] = "Hoy {0} palabras  ·  total {1}"; all["es"]["ContextMenu"] = "Leer con Sesli Okuma";
+            all["pt"]["HoverRead"] = "Ler o que o mouse aponta (acessibilidade)"; all["pt"]["Stats"] = "Hoje {0} palavras  ·  total {1}"; all["pt"]["ContextMenu"] = "Ler com Sesli Okuma";
+            all["zh"]["HoverRead"] = "朗读鼠标指向的内容（无障碍）"; all["zh"]["Stats"] = "今天 {0} 词  ·  总计 {1}"; all["zh"]["ContextMenu"] = "用 Sesli Okuma 朗读";
         }
 
         static void AddReaderBar(Dictionary<string, Dictionary<string, string>> all)

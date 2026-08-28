@@ -22,7 +22,8 @@ namespace SesliOkuma
         [DllImport("user32.dll")] static extern int GetMessageTime();
         [DllImport("user32.dll")] static extern uint GetClipboardSequenceNumber();
 
-        const int WM_HOTKEY = 0x0312, WM_SHOWSETTINGS = 0x8000 + 41, WM_SHOWABOUT = 0x8000 + 42;
+        const int WM_HOTKEY = 0x0312, WM_SHOWSETTINGS = 0x8000 + 41, WM_SHOWABOUT = 0x8000 + 42, WM_READFILE = 0x8000 + 43;
+        static string PendingPath { get { return System.IO.Path.Combine(AppSettings.DataDir, "pending-read.txt"); } }
         const string HostTitle = "SesliOkumaHost";
         const uint MOD_NOREPEAT = 0x4000;
         const byte VK_CONTROL = 0x11, VK_MENU = 0x12, VK_SHIFT = 0x10, VK_LWIN = 0x5B, VK_C = 0x43;
@@ -52,6 +53,8 @@ namespace SesliOkuma
         public Reader Reader;
         ReaderBar _bar;
         readonly System.Windows.Forms.Timer _gesture = new System.Windows.Forms.Timer();
+        readonly System.Windows.Forms.Timer _hover = new System.Windows.Forms.Timer();
+        Point _hoverLast; DateTime _hoverSince; string _hoverSpoken = "";
         DateTime _pressStart;
         int _lastPressTick = int.MinValue;
         bool _holdCandidate;
@@ -124,6 +127,10 @@ namespace SesliOkuma
                 if (Settings.AutoUpdate && DateTime.UtcNow - Settings.LastUpdateCheck >= Updater.CheckInterval) Updater.CheckAsync(false);
             };
             _updateTimer.Start();
+
+            _hover.Interval = 250;
+            _hover.Tick += HoverTick;
+            SyncHover();
 
             NaturalInstaller = new NaturalVoicesInstaller(this);
             NaturalInstaller.Completed += delegate { RefreshVoices(); };
@@ -228,6 +235,38 @@ namespace SesliOkuma
             catch (Exception ex) { Logger.Log("UIA point: " + ex.Message); return null; }
         }
 
+        public void SyncHover() { if (Settings.HoverRead) _hover.Start(); else { _hover.Stop(); _hoverSpoken = ""; } }
+
+        // Accessibility: when the pointer rests on a control for ~0.7 s, speak its name/text (once per element).
+        void HoverTick(object sender, EventArgs e)
+        {
+            var pt = Cursor.Position;
+            if (pt != _hoverLast) { _hoverLast = pt; _hoverSince = DateTime.UtcNow; return; }
+            if ((DateTime.UtcNow - _hoverSince).TotalMilliseconds < 700 || Reader.Active || Engine.IsSpeaking) return;
+            _hoverSince = DateTime.UtcNow.AddYears(1);       // one shot per rest position
+            try
+            {
+                uint pid; GetWindowThreadProcessId(GetForegroundWindow(), out pid);
+                if (pid == (uint)System.Diagnostics.Process.GetCurrentProcess().Id) return;
+                var el = AutomationElement.FromPoint(new System.Windows.Point(pt.X, pt.Y));
+                if (el == null) return;
+                string name = el.Current.Name;
+                object pat;
+                if ((name == null || name.Trim().Length == 0) && el.TryGetCurrentPattern(TextPattern.Pattern, out pat))
+                {
+                    var range = ((TextPattern)pat).RangeFromPoint(new System.Windows.Point(pt.X, pt.Y));
+                    if (range != null) { range.ExpandToEnclosingUnit(TextUnit.Line); name = range.GetText(200); }
+                }
+                if (name == null) return;
+                name = name.Trim();
+                if (name.Length == 0 || name.Length > 200 || name == _hoverSpoken) return;
+                _hoverSpoken = name;
+                bool primary = TextLanguage.IsPrimary(name, Settings.PrimaryLang);
+                Engine.Speak(name, primary ? (PrimaryVoice ?? OtherVoice) : (OtherVoice ?? PrimaryVoice), Settings.Rate);
+            }
+            catch (Exception ex) { Logger.Log("hover: " + ex.Message); }
+        }
+
         void GestureTick(object sender, EventArgs e)
         {
             if (!_holdCandidate) { _gesture.Stop(); return; }
@@ -315,6 +354,21 @@ namespace SesliOkuma
             if (_settings.Visible) _settings.Hide(); else _settings.ShowNearTray();
         }
 
+        public void ReadPendingFile()
+        {
+            try
+            {
+                if (!System.IO.File.Exists(PendingPath)) return;
+                string path = System.IO.File.ReadAllText(PendingPath).Trim();
+                System.IO.File.Delete(PendingPath);
+                if (!System.IO.File.Exists(path)) return;
+                string text = System.IO.File.ReadAllText(path);
+                if (text.Trim().Length == 0) return;
+                Read(text, "file:" + System.IO.Path.GetFileName(path));
+            }
+            catch (Exception ex) { Logger.Log("read file: " + ex.Message); }
+        }
+
         public void ShowAbout()
         {
             if (_about != null && !_about.IsDisposed) { _about.Activate(); return; }
@@ -335,6 +389,7 @@ namespace SesliOkuma
             if (m.Msg == WM_HOTKEY) { if (m.WParam.ToInt32() == 2) TranslateSelection(); else OnHotkey(); return; }
             if (m.Msg == WM_SHOWSETTINGS) { ToggleSettings(); return; }
             if (m.Msg == WM_SHOWABOUT) { ShowAbout(); return; }
+            if (m.Msg == WM_READFILE) { ReadPendingFile(); return; }
             base.WndProc(ref m);
         }
 
@@ -489,6 +544,7 @@ namespace SesliOkuma
             bool primary = TextLanguage.IsPrimary(text, Settings.PrimaryLang);
             VoiceInfo v = primary ? (PrimaryVoice ?? OtherVoice) : (OtherVoice ?? PrimaryVoice);
             Reader.Start(text, v);
+            Settings.CountWords(text);
             Logger.Log("read " + source + " " + (primary ? Settings.PrimaryLang : "other") + " len=" + text.Length + " sentences=" + Reader.Count + " app=" + ForegroundApp());
         }
         protected override void OnFormClosed(FormClosedEventArgs e)
@@ -497,6 +553,7 @@ namespace SesliOkuma
             if (_trRegistered) UnregisterHotKey(Handle, 2);
             _pulse.Stop();
             _gesture.Stop();
+            _hover.Stop();
             _updateTimer.Stop();
             Reader.Stop(false);
             Engine.Stop();
@@ -508,18 +565,22 @@ namespace SesliOkuma
         static void Main(string[] args)
         {
             bool wantAbout = args.Length > 0 && args[0] == "--about";
+            string readFile = args.Length > 1 && args[0] == "--read" ? args[1] : null;
+            if (readFile != null) { try { System.IO.File.WriteAllText(PendingPath, System.IO.Path.GetFullPath(readFile)); } catch { } }
             bool createdNew;
             using (var mutex = new Mutex(true, @"Local\SesliOkumaHotkey", out createdNew))
             {
                 if (!createdNew)
                 {
                     IntPtr h = FindWindow(null, HostTitle);
-                    if (h != IntPtr.Zero) PostMessage(h, wantAbout ? WM_SHOWABOUT : WM_SHOWSETTINGS, IntPtr.Zero, IntPtr.Zero);
+                    if (h != IntPtr.Zero) PostMessage(h, readFile != null ? WM_READFILE : (wantAbout ? WM_SHOWABOUT : WM_SHOWSETTINGS), IntPtr.Zero, IntPtr.Zero);
                     return;
                 }
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new TrayApp());
+                var app = new TrayApp();
+                if (readFile != null) app.BeginInvoke(new Action(delegate { app.ReadPendingFile(); }));
+                Application.Run(app);
             }
         }
     }

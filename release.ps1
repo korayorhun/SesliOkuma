@@ -16,11 +16,14 @@ if (-not $iscc) { throw "Inno Setup not found (winget install JRSoftware.InnoSet
 & $iscc.FullName /Q $iss; if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
 $setup = Join-Path $d "dist\SesliOkuma-Setup-$Version.exe"
 if (-not (Test-Path $setup)) { throw "Installer not produced: $setup" }
+$portable = Join-Path $d "dist\SesliOkuma-Portable-$Version.zip"
+if (Test-Path $portable) { [IO.File]::Delete($portable) }
+Compress-Archive -Path (Join-Path $d 'SesliOkuma.exe'), (Join-Path $d 'README.md'), (Join-Path $d 'LICENSE.txt') -DestinationPath $portable
 $sha = (Get-FileHash $setup -Algorithm SHA256).Hash
 $shaFile = "$setup.sha256"
 "$sha  $(Split-Path -Leaf $setup)" | Set-Content $shaFile -Encoding ASCII -NoNewline
 git add -A; git commit -q -m "release: v$Version"; git tag "v$Version"; git push -q; git push -q --tags
 if (-not $Notes) { $Notes = "Sesli Okuma $Version" }
-gh release create "v$Version" $setup $shaFile --title "Sesli Okuma $Version" --notes $Notes
+gh release create "v$Version" $setup $shaFile $portable --title "Sesli Okuma $Version" --notes $Notes
 Write-Host "Released v$Version  SHA256=$sha"
 Write-Host "winget: update winget\*.yaml (PackageVersion, InstallerUrl, InstallerSha256), then: wingetcreate submit winget"

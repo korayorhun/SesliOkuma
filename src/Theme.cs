@@ -9,7 +9,7 @@ namespace SesliOkuma
 {
     public static class Theme
     {
-        public static bool Dark;
+        public static bool Dark, HighContrast;
         public static Color Bg, Card, CardHover, Border, Text, Muted, Accent, AccentHover, AccentText, Track, AccentSoft;
         public static Font Body, Small, Title, Caption, Icon, Mono;
 
@@ -18,6 +18,7 @@ namespace SesliOkuma
             Dark = ReadDword(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "AppsUseLightTheme", 1) == 0;
             string forced = Environment.GetEnvironmentVariable("SESLIOKUMA_THEME");
             if (forced == "light") Dark = false; else if (forced == "dark") Dark = true;
+            HighContrast = SystemInformation.HighContrast || forced == "hc";
             if (Dark)
             {
                 Bg = Rgb(0x16171D); Card = Rgb(0x1F2129); CardHover = Rgb(0x272A34); Border = Rgb(0x2E3140);
@@ -29,6 +30,14 @@ namespace SesliOkuma
                 Bg = Rgb(0xF6F7FB); Card = Color.White; CardHover = Rgb(0xF0F2F8); Border = Rgb(0xE1E4EC);
                 Text = Rgb(0x1B1D24); Muted = Rgb(0x6B7080); Accent = Rgb(0x3B6CFF); AccentHover = Rgb(0x2F5BE0);
                 AccentText = Color.White; Track = Rgb(0xE1E4EC); AccentSoft = Rgb(0xE8EEFF);
+            }
+            if (HighContrast)
+            {
+                // Follow the user's high-contrast scheme: system colors, strong borders, no soft tints.
+                Bg = SystemColors.Window; Card = SystemColors.Window; CardHover = SystemColors.Highlight; Border = SystemColors.WindowText;
+                Text = SystemColors.WindowText; Muted = SystemColors.GrayText; Accent = SystemColors.Highlight; AccentHover = SystemColors.HotTrack;
+                AccentText = SystemColors.HighlightText; Track = SystemColors.GrayText; AccentSoft = SystemColors.Window;
+                Dark = Bg.GetBrightness() < 0.5f;
             }
             Body = new Font("Segoe UI", 10f);
             Small = new Font("Segoe UI", 8.5f);

@@ -28,6 +28,8 @@ namespace SesliOkuma
         readonly CaptionLink _advanced = new CaptionLink { ChevronOnly = true };
         readonly ToggleSwitch _autoUpdate = new ToggleSwitch();
         readonly ToggleSwitch _readerBar = new ToggleSwitch();
+        readonly ToggleSwitch _hover = new ToggleSwitch();
+        readonly Label _stats = new Label();
         readonly HotkeyBox _trHotkey = new HotkeyBox { HintKey = "HotkeyHintSimple" };
         readonly TextBox _key = new TextBox();
         readonly Label _checkLink = new Label();
@@ -159,6 +161,8 @@ namespace SesliOkuma
             _autoUpdate.CheckedChanged += delegate { if (!_loading) { _app.Settings.AutoUpdate = _autoUpdate.Checked; _app.Settings.Save(); } };
             a = ToggleRowIn(_adv, L.T("ReaderBar"), _readerBar, a);
             _readerBar.CheckedChanged += delegate { if (!_loading) { _app.Settings.ShowReaderBar = _readerBar.Checked; _app.Settings.Save(); } };
+            a = ToggleRowIn(_adv, L.T("HoverRead"), _hover, a);
+            _hover.CheckedChanged += delegate { if (!_loading) { _app.Settings.HoverRead = _hover.Checked; _app.Settings.Save(); _app.SyncHover(); } };
             a += 8;
             a = CaptionIn(_adv, L.T("TranslateHotkey"), a);
             _trHotkey.SetBounds(Pad, a, W - 2 * Pad, Row);
@@ -183,6 +187,9 @@ namespace SesliOkuma
             _checkLink.Text = L.T("CheckUpdates"); _checkLink.SetBounds(Pad, a, W - 2 * Pad, 18);
             _checkLink.Click += delegate { Flash(L.T("Checking")); _app.Updater.CheckAsync(true); };
             _adv.Controls.Add(_checkLink);
+            _stats.Font = Theme.Small; _stats.ForeColor = Theme.Muted; _stats.BackColor = Color.Transparent; _stats.AutoSize = false; _stats.TextAlign = ContentAlignment.TopRight;
+            _stats.SetBounds(W - Pad - 200, a, 200, 18);
+            _adv.Controls.Add(_stats);
             a += 18 + 8;
             _adv.Height = a; _advH = a;
             _body.Controls.Add(_adv);
@@ -411,6 +418,8 @@ namespace SesliOkuma
             _startup.Checked = StartupShortcut.IsEnabled;
             _autoUpdate.Checked = _app.Settings.AutoUpdate;
             _readerBar.Checked = _app.Settings.ShowReaderBar;
+            _hover.Checked = _app.Settings.HoverRead;
+            _stats.Text = L.F("Stats", _app.Settings.WordsToday.ToString("N0"), _app.Settings.WordsTotal.ToString("N0"));
             _loading = false;
             ShowHint();
             Relayout();
