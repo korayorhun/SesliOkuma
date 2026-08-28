@@ -1,0 +1,45 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build SesliOkuma.exe (csc, .NET Framework 4.8)
+        shell: pwsh
+        run: |
+          $env:SESLIOKUMA_NOSTART = '1'
+          .\build.ps1
+          (Get-Item .\SesliOkuma.exe).VersionInfo | Select-Object FileVersion, ProductName | Format-List
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y | Out-Null
+          $langs = 'C:\Program Files (x86)\Inno Setup 6\Languages'
+          Invoke-WebRequest 'https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/Hindi.islu' -OutFile "$langs\Hindi.islu"
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' /Q installer\SesliOkuma.iss
+          Get-ChildItem dist | ForEach-Object { "$($_.Name)  $((Get-FileHash $_.FullName -Algorithm SHA256).Hash)" }
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SesliOkuma-build
+          path: |
+            SesliOkuma.exe
+            dist/*.exe
