@@ -172,11 +172,11 @@ namespace SesliOkuma
             a += Row + 6;
             _adv.Controls.Add(MakeLabel(L.T("FreeEngine"), Theme.Small, Theme.Muted, Pad, a, W - 2 * Pad, 16));
             a += 16 + Gap;
-            a = CaptionIn(_adv, L.T("DeepLKey"), a);
-            var get = MakeLabel(L.T("GetKey"), Theme.Caption, Theme.Accent, W - Pad - 170, a - Cap, 170, 16); get.TextAlign = ContentAlignment.TopRight; get.Cursor = Cursors.Hand;
+            a = CaptionIn(_adv, L.T("DeepLKey"), a, W - 2 * Pad - 130);
+            var get = MakeLabel(L.T("GetKey"), Theme.Caption, Theme.Accent, W - Pad - 125, a - Cap + 3, 125, 16); get.TextAlign = ContentAlignment.TopRight; get.Cursor = Cursors.Hand;
             get.Click += delegate { OpenUrl("https://www.deepl.com/pro-api"); };
             _adv.Controls.Add(get);
-            var keyBox = new Panel { BackColor = Theme.Card, Location = new Point(Pad, a), Size = new Size(W - 2 * Pad, 40) };
+            var keyBox = new Panel { BackColor = Theme.Card, Location = new Point(Pad, a), Size = new Size(W - 2 * Pad, 40), BorderStyle = Theme.HighContrast ? BorderStyle.FixedSingle : BorderStyle.None };
             _key.BorderStyle = BorderStyle.None; _key.BackColor = Theme.Card; _key.ForeColor = Theme.Text; _key.Font = Theme.Body; _key.UseSystemPasswordChar = true;
             _key.SetBounds(12, 10, keyBox.Width - 24, 22);
             _key.Leave += delegate { SaveKey(); };
@@ -184,11 +184,11 @@ namespace SesliOkuma
             keyBox.Controls.Add(_key); _adv.Controls.Add(keyBox);
             a += 40 + Gap;
             _checkLink.Font = Theme.Small; _checkLink.ForeColor = Theme.Accent; _checkLink.BackColor = Color.Transparent; _checkLink.Cursor = Cursors.Hand; _checkLink.AutoSize = false;
-            _checkLink.Text = L.T("CheckUpdates"); _checkLink.SetBounds(Pad, a, W - 2 * Pad, 18);
+            _checkLink.Text = L.T("CheckUpdates"); _checkLink.SetBounds(Pad, a, 150, 18);
             _checkLink.Click += delegate { Flash(L.T("Checking")); _app.Updater.CheckAsync(true); };
             _adv.Controls.Add(_checkLink);
             _stats.Font = Theme.Small; _stats.ForeColor = Theme.Muted; _stats.BackColor = Color.Transparent; _stats.AutoSize = false; _stats.TextAlign = ContentAlignment.TopRight;
-            _stats.SetBounds(W - Pad - 200, a, 200, 18);
+            _stats.SetBounds(Pad + 150, a, W - 2 * Pad - 150, 18);
             _adv.Controls.Add(_stats);
             a += 18 + 8;
             _adv.Height = a; _advH = a;
@@ -226,9 +226,10 @@ namespace SesliOkuma
         }
 
         int Caption(string text, int y) { return CaptionIn(_body, text, y); }
-        int CaptionIn(Control parent, string text, int y)
+        int CaptionIn(Control parent, string text, int y) { return CaptionIn(parent, text, y, W - 2 * Pad); }
+        int CaptionIn(Control parent, string text, int y, int width)
         {
-            parent.Controls.Add(MakeLabel(text, Theme.Caption, Theme.Muted, Pad, y + 3, 200, 16));
+            parent.Controls.Add(MakeLabel(text, Theme.Caption, Theme.Muted, Pad, y + 3, width, 16));
             return y + Cap;
         }
 
