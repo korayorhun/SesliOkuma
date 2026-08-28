@@ -165,7 +165,9 @@ namespace SesliOkuma
             _trHotkey.HotkeyChosen += delegate (HotkeyDef def) { if (_app.ApplyTranslateHotkey(def)) { _trHotkey.Value = def; Flash(L.F("HotkeySaved", def.ToString())); } else { _trHotkey.Value = _app.TranslateHotkey; Flash(L.F("HotkeyTaken", def.ToString())); } };
             _trHotkey.NeedModifier += delegate { Flash(L.T("HotkeyNeedMod")); };
             _adv.Controls.Add(_trHotkey);
-            a += Row + Gap + 8;
+            a += Row + 6;
+            _adv.Controls.Add(MakeLabel(L.T("FreeEngine"), Theme.Small, Theme.Muted, Pad, a, W - 2 * Pad, 16));
+            a += 16 + Gap;
             a = CaptionIn(_adv, L.T("DeepLKey"), a);
             var get = MakeLabel(L.T("GetKey"), Theme.Caption, Theme.Accent, W - Pad - 170, a - Cap, 170, 16); get.TextAlign = ContentAlignment.TopRight; get.Cursor = Cursors.Hand;
             get.Click += delegate { OpenUrl("https://www.deepl.com/pro-api"); };

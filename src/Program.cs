@@ -277,12 +277,6 @@ namespace SesliOkuma
         void TranslateSelectionCore()
         {
             Logger.Log("translate requested");
-            if (Settings.DeepLKey.Trim().Length == 0)
-            {
-                _tray.ShowBalloonTip(6000, L.T("TranslateRead"), L.T("TranslateNeedsKey"), ToolTipIcon.Info);
-                Settings.AdvancedOpen = true; Settings.Save(); ShowSettings();
-                return;
-            }
             string text = GrabText();
             if (text == null) { _tray.ShowBalloonTip(4000, L.T("TranslateRead"), L.T("NoTextToSave"), ToolTipIcon.Warning); return; }
             Reader.Stop(false);

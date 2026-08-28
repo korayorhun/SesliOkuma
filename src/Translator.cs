@@ -12,9 +12,11 @@ using System.Windows.Forms;
 
 namespace SesliOkuma
 {
-    // DeepL API client (free or pro key). Source language is auto-detected; target is the user's primary language.
+    // Translation: free MyMemory engine by default (no account), DeepL when the user has entered a key.
     public static class Translator
     {
+        const string UserAgent = "SesliOkuma";
+
         public static string DeepLTarget(string lang2)
         {
             switch (lang2)
@@ -23,45 +25,109 @@ namespace SesliOkuma
                 case "pt": return "PT-BR";
                 case "zh": return "ZH";
                 case "hi": return null;                       // not offered by DeepL
-                default: return lang2.ToUpperInvariant();     // TR, ES, FR, AR, DE, RU, IT, JA, KO, NL, PL…
+                default: return lang2.ToUpperInvariant();
             }
+        }
+
+        static string MyMemoryTarget(string lang2)
+        {
+            switch (lang2) { case "zh": return "zh-CN"; case "pt": return "pt-BR"; }
+            return lang2;
+        }
+
+        // MyMemory: ~5000 chars/day per IP, 500 bytes per request -> translate chunk by chunk, source auto-detected.
+        static string MyMemory(string text, string targetLang2, out string detected)
+        {
+            detected = "";
+            var chunks = new List<string>();
+            foreach (string sentence in Reader.Split(text))
+            {
+                string s = sentence;
+                while (Encoding.UTF8.GetByteCount(s) > 450)
+                {
+                    int cut = s.LastIndexOf(' ', Math.Min(s.Length - 1, 300));
+                    if (cut < 40) cut = Math.Min(300, s.Length - 1);
+                    chunks.Add(s.Substring(0, cut));
+                    s = s.Substring(cut).TrimStart();
+                }
+                chunks.Add(s);
+            }
+            var ser = new JavaScriptSerializer();
+            var sb = new StringBuilder();
+            foreach (string chunk in chunks)
+            {
+                string url = "https://api.mymemory.translated.net/get?q=" + Uri.EscapeDataString(chunk) + "&langpair=Autodetect|" + MyMemoryTarget(targetLang2);
+                var req = (HttpWebRequest)WebRequest.Create(url);
+                req.Timeout = 15000; req.UserAgent = UserAgent;
+                string json;
+                using (var resp = (HttpWebResponse)req.GetResponse())
+                using (var sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8)) json = sr.ReadToEnd();
+                var root = ser.Deserialize<Dictionary<string, object>>(json);
+                object qf;
+                if (root.TryGetValue("quotaFinished", out qf) && qf is bool && (bool)qf) throw new InvalidOperationException(L.T("FreeQuota"));
+                object statusObj;
+                int status = root.TryGetValue("responseStatus", out statusObj) ? Convert.ToInt32(statusObj) : 200;
+                if (status == 429) throw new InvalidOperationException(L.T("FreeQuota"));
+                if (status != 200) throw new InvalidOperationException("MyMemory " + status);
+                var data = (Dictionary<string, object>)root["responseData"];
+                if (sb.Length > 0) sb.Append(' ');
+                sb.Append(Convert.ToString(data["translatedText"]));
+                object det;
+                if (detected.Length == 0 && data.TryGetValue("detectedLanguage", out det) && det != null) detected = Convert.ToString(det).ToUpperInvariant();
+            }
+            return sb.ToString();
+        }
+
+        static string DeepL(string apiKey, string text, string target, out string detected)
+        {
+            string host = apiKey.TrimEnd().EndsWith(":fx") ? "https://api-free.deepl.com" : "https://api.deepl.com";
+            var req = (HttpWebRequest)WebRequest.Create(host + "/v2/translate");
+            req.Method = "POST"; req.Timeout = 15000; req.UserAgent = UserAgent;
+            req.Headers["Authorization"] = "DeepL-Auth-Key " + apiKey.Trim();
+            req.ContentType = "application/x-www-form-urlencoded";
+            byte[] body = Encoding.UTF8.GetBytes("text=" + Uri.EscapeDataString(text) + "&target_lang=" + target);
+            using (var rs = req.GetRequestStream()) rs.Write(body, 0, body.Length);
+            string json;
+            using (var resp = (HttpWebResponse)req.GetResponse())
+            using (var sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8)) json = sr.ReadToEnd();
+            var root = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(json);
+            var arr = root["translations"] as System.Collections.ArrayList;
+            var first = (Dictionary<string, object>)arr[0];
+            detected = first.ContainsKey("detected_source_language") ? Convert.ToString(first["detected_source_language"]) : "";
+            return Convert.ToString(first["text"]);
         }
 
         public static void TranslateAsync(Control ui, string apiKey, string text, string targetLang2, Action<string, string> done, Action<string> failed)
         {
-            string target = DeepLTarget(targetLang2);
+            bool useDeepL = apiKey != null && apiKey.Trim().Length > 0;
+            string target = useDeepL ? DeepLTarget(targetLang2) : MyMemoryTarget(targetLang2);
             if (target == null) { failed(L.F("TranslateUnsupported", L.NativeName(targetLang2))); return; }
             var t = new Thread(delegate ()
             {
-                string translated = null, detected = null, err = null;
+                string translated = null, detected = "", err = null;
                 try
                 {
                     ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12 | (SecurityProtocolType)12288;
-                    string host = apiKey.TrimEnd().EndsWith(":fx") ? "https://api-free.deepl.com" : "https://api.deepl.com";
-                    var req = (HttpWebRequest)WebRequest.Create(host + "/v2/translate");
-                    req.Method = "POST"; req.Timeout = 15000; req.UserAgent = "SesliOkuma";
-                    req.Headers["Authorization"] = "DeepL-Auth-Key " + apiKey.Trim();
-                    req.ContentType = "application/x-www-form-urlencoded";
-                    byte[] body = Encoding.UTF8.GetBytes("text=" + Uri.EscapeDataString(text) + "&target_lang=" + target);
-                    using (var rs = req.GetRequestStream()) rs.Write(body, 0, body.Length);
-                    string json;
-                    using (var resp = (HttpWebResponse)req.GetResponse())
-                    using (var sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8)) json = sr.ReadToEnd();
-                    var root = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(json);
-                    var arr = root["translations"] as System.Collections.ArrayList;
-                    var first = (Dictionary<string, object>)arr[0];
-                    translated = Convert.ToString(first["text"]);
-                    detected = first.ContainsKey("detected_source_language") ? Convert.ToString(first["detected_source_language"]) : "";
+                    translated = useDeepL ? DeepL(apiKey, text, target, out detected) : MyMemory(text, targetLang2, out detected);
                 }
                 catch (WebException wex)
                 {
                     var r = wex.Response as HttpWebResponse;
                     if (r != null && (int)r.StatusCode == 403) err = L.T("TranslateBadKey");
                     else if (r != null && (int)r.StatusCode == 456) err = L.T("TranslateQuota");
+                    else if (r != null && (int)r.StatusCode == 429) err = L.T("FreeQuota");
                     else err = wex.Message;
                 }
                 catch (Exception ex) { err = ex.Message; }
-                try { ui.BeginInvoke(new Action(delegate { if (err != null) { Logger.Log("translate: " + err); failed(err); } else { Logger.Log("translated " + detected + "->" + target + " len=" + translated.Length); done(translated, detected); } })); } catch { }
+                try
+                {
+                    ui.BeginInvoke(new Action(delegate
+                    {
+                        if (err != null) { Logger.Log("translate: " + err); failed(err); }
+                        else { Logger.Log("translated(" + (useDeepL ? "deepl" : "free") + ") " + detected + "->" + target + " len=" + translated.Length); done(translated, detected); }
+                    }));
+                }
+                catch { }
             });
             t.IsBackground = true; t.Start();
         }
@@ -102,6 +168,14 @@ namespace SesliOkuma
             _anim.Tick += delegate { _phase = (_phase + 6) % 400; Invalidate(new Rectangle(0, Height - 6, Width, 6)); };
         }
 
+        protected override bool ShowWithoutActivation { get { return true; } }
+        protected override CreateParams CreateParams { get { var cp = base.CreateParams; cp.ExStyle |= 0x08000000 | 0x00000080; cp.ClassStyle |= 0x20000; return cp; } }
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            try { int round = 2; DwmSetWindowAttribute(Handle, 33, ref round, sizeof(int)); int dark = Theme.Dark ? 1 : 0; DwmSetWindowAttribute(Handle, 20, ref dark, sizeof(int)); } catch { }
+        }
+
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
@@ -112,14 +186,6 @@ namespace SesliOkuma
             float w = track.Width * 0.25f, x = track.X + (track.Width + w) * (_phase / 400f) - w;
             var seg = RectangleF.Intersect(track, new RectangleF(x, track.Y, w, track.Height));
             if (seg.Width > 0) using (var b = new SolidBrush(Theme.Accent)) e.Graphics.FillRectangle(b, seg);
-        }
-
-        protected override bool ShowWithoutActivation { get { return true; } }
-        protected override CreateParams CreateParams { get { var cp = base.CreateParams; cp.ExStyle |= 0x08000000 | 0x00000080; cp.ClassStyle |= 0x20000; return cp; } }
-        protected override void OnHandleCreated(EventArgs e)
-        {
-            base.OnHandleCreated(e);
-            try { int round = 2; DwmSetWindowAttribute(Handle, 33, ref round, sizeof(int)); int dark = Theme.Dark ? 1 : 0; DwmSetWindowAttribute(Handle, 20, ref dark, sizeof(int)); } catch { }
         }
 
         public void SetContent(string sourceLang, string targetLang, string original, string translation, bool busy)

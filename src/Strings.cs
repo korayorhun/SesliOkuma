@@ -548,6 +548,7 @@ namespace SesliOkuma
             AddTranslate(all);
             AddHintSimple(all);
             AddUi(all);
+            AddFreeTranslate(all);
         }
 
         static void Put2(Dictionary<string, Dictionary<string, string>> all, string lang, string install, string installing, string done, string failed, string noVoice, string settings)
@@ -770,6 +771,18 @@ namespace SesliOkuma
             all["zh"]["Pause"] = "暂停";
             all["zh"]["Resume"] = "继续";
             all["zh"]["SpeedTip"] = "速度";
+        }
+
+        static void AddFreeTranslate(Dictionary<string, Dictionary<string, string>> all)
+        {
+            all["fr"]["DeepLKey"] = "CLÉ DEEPL — FACULTATIVE, MEILLEURES TRADUCTIONS"; all["fr"]["FreeQuota"] = "La limite de traduction gratuite du jour est atteinte (environ 5 000 caractères)"; all["fr"]["FreeEngine"] = "Traduction gratuite (MyMemory) · sans clé";
+            all["zh"]["DeepLKey"] = "DEEPL 密钥 — 可选，翻译质量更高"; all["zh"]["FreeQuota"] = "今日免费翻译额度已用完（约 5,000 字符）"; all["zh"]["FreeEngine"] = "免费翻译（MyMemory）· 无需密钥";
+            all["ar"]["DeepLKey"] = "مفتاح DEEPL — اختياري، ترجمة أفضل"; all["ar"]["FreeQuota"] = "انتهى حد الترجمة المجانية لهذا اليوم (نحو 5000 حرف)"; all["ar"]["FreeEngine"] = "ترجمة مجانية (MyMemory) · بدون مفتاح";
+            all["pt"]["DeepLKey"] = "CHAVE DEEPL — OPCIONAL, TRADUÇÕES MELHORES"; all["pt"]["FreeQuota"] = "O limite gratuito de tradução de hoje acabou (cerca de 5.000 caracteres)"; all["pt"]["FreeEngine"] = "Tradução gratuita (MyMemory) · sem chave";
+            all["tr"]["DeepLKey"] = "DEEPL ANAHTARI — İSTEĞE BAĞLI, DAHA İYİ ÇEVİRİ"; all["tr"]["FreeQuota"] = "Bugünlük ücretsiz çeviri sınırı doldu (yaklaşık 5.000 karakter)"; all["tr"]["FreeEngine"] = "Ücretsiz çeviri (MyMemory) · anahtar gerekmez";
+            all["hi"]["DeepLKey"] = "DEEPL कुंजी — वैकल्पिक, बेहतर अनुवाद"; all["hi"]["FreeQuota"] = "आज की मुफ़्त अनुवाद सीमा समाप्त (लगभग 5,000 अक्षर)"; all["hi"]["FreeEngine"] = "मुफ़्त अनुवाद (MyMemory) · कुंजी की ज़रूरत नहीं";
+            all["en"]["DeepLKey"] = "DEEPL KEY — OPTIONAL, BETTER TRANSLATIONS"; all["en"]["FreeQuota"] = "Today's free translation limit is used up (about 5,000 characters)"; all["en"]["FreeEngine"] = "Free translation (MyMemory) · no key needed";
+            all["es"]["DeepLKey"] = "CLAVE DEEPL — OPCIONAL, MEJORES TRADUCCIONES"; all["es"]["FreeQuota"] = "Se agotó el límite de traducción gratuita de hoy (unos 5.000 caracteres)"; all["es"]["FreeEngine"] = "Traducción gratuita (MyMemory) · sin clave";
         }
 
         static void AddReaderBar(Dictionary<string, Dictionary<string, string>> all)

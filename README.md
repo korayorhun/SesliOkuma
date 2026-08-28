@@ -14,13 +14,14 @@
 **Sesli Okuma** (Turkish for "read aloud") is a tiny Windows 10/11 tray tool: **select text in any application and press a shortcut** (default `Ctrl + Alt + S`) to hear it read aloud — press again to stop. Click the tray icon for a minimal panel with the shortcut, voices per language, reading speed and interface language.
 
 <p align="center"><img src="docs/panel-en.png" width="360" alt="Settings panel (English)"></p>
-<p align="center"><img src="docs/readerbar.png" width="620" alt="Mini bar while reading"></p>
+<p align="center"><img src="docs/readerbar.png" width="560" alt="Mini bar while reading"></p>
+<p align="center"><img src="docs/translation.png" width="440" alt="Translate &amp; read card"></p>
 
 ## Highlights
 
 - **One shortcut, three gestures** — press: read the selection (or the paragraph under the mouse when nothing is selected) / stop; press twice: read the clipboard; hold: pause / resume.
 - **Mini bar while reading** — a thin bar at the bottom of the screen shows the current sentence with pause, previous/next sentence and speed; it disappears when reading ends (can be turned off).
-- **Translate & read** — a second shortcut (default `Ctrl + Alt + T`) translates the selection into your primary language with DeepL (free API key, entered once under *Advanced*), shows original + translation in a small card and reads the translation aloud.
+- **Translate & read** — a second shortcut (default `Ctrl + Alt + T`) translates the selection into your primary language, shows original + translation in a small card and reads the translation aloud. Works out of the box with the free MyMemory service (no account; ~5,000 characters/day); an optional DeepL key under *Advanced* gives better translations.
 - **Works everywhere** — browsers, Office, PDF readers, chat apps, IDEs. Text is taken through UI Automation; apps that don't expose it fall back to a transparent copy that restores your clipboard.
 - **Natural voices in one click** — the panel offers to install the open-source [NaturalVoiceSAPIAdapter](https://github.com/gexgd0419/NaturalVoiceSAPIAdapter), adding Microsoft's online neural voices (Turkish *Emel/Ahmet*, English *Andrew/Ava/Aria…*, and multilingual voices). Windows voice packs can be added from the panel too.
 - **Voice per language** — the script/language of the selected text is detected; primary-language text uses your primary voice, everything else your second voice.
@@ -38,7 +39,7 @@ Download the latest `SesliOkuma-Setup-x.y.z.exe` from **[Releases](https://githu
 | Read selected text | select text → `Ctrl + Alt + S` (or your shortcut) |
 | Stop | press the shortcut again (or tray icon → Stop) |
 | Pause / resume | hold the shortcut ~1 s, or the mini bar |
-| Translate & read | `Ctrl + Alt + T` (DeepL key required — free at deepl.com/pro-api) |
+| Translate & read | `Ctrl + Alt + T` — free, no setup; optional DeepL key for better quality |
 | Read clipboard | press the shortcut twice |
 | Settings | click the tray icon (or run the exe again) |
 | Interface language / About | globe icon in the panel |
@@ -70,7 +71,7 @@ Windows 10/11 için küçük bir sistem tepsisi aracı: **herhangi bir uygulamad
 
 - **Tek kısayol, üç jest** — bas: seçimi (seçim yoksa imlecin altındaki paragrafı) oku / sustur; iki kez bas: panoyu oku; basılı tut: duraklat / devam.
 - **Okurken mini şerit** — ekranın altında ince bir çubuk: okunan cümle, duraklat, önceki/sonraki cümle, hız; okuma bitince kaybolur (kapatılabilir).
-- **Çevir ve oku** — ikinci kısayol (varsayılan `Ctrl + Alt + T`) seçimi DeepL ile ana dilinize çevirir (ücretsiz API anahtarı, *Gelişmiş* altında bir kez girilir), küçük bir kartta orijinal + çeviriyi gösterir ve çeviriyi okur.
+- **Çevir ve oku** — ikinci kısayol (varsayılan `Ctrl + Alt + T`) seçimi ana dilinize çevirir, küçük bir kartta orijinal + çeviriyi gösterir ve çeviriyi okur. Kurulum gerekmez: ücretsiz MyMemory servisi (hesapsız, günde ~5.000 karakter); daha iyi çeviri isteyenler *Gelişmiş* altına isteğe bağlı DeepL anahtarı girebilir.
 - **Her yerde çalışır** — tarayıcı, Office, PDF, sohbet, IDE. Metin UI Automation ile alınır; vermeyen uygulamalarda panonuzu geri yükleyen şeffaf bir kopyalama yoluna düşer.
 - **Doğal sesler tek tıkla** — panel, açık kaynak [NaturalVoiceSAPIAdapter](https://github.com/gexgd0419/NaturalVoiceSAPIAdapter)'ı kurmayı önerir: Emel, Ahmet ve 15+ İngilizce neural ses, çok dilli sesler (internet gerekir). Windows ses paketleri de panelden eklenir.
 - **Dile göre ses** — seçili metnin dili algılanır; ana dil metinleri ana dil sesiyle, diğerleri ikinci sesle okunur.
