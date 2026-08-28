@@ -73,6 +73,7 @@ namespace SesliOkuma
         {
             if (_index + 1 >= _sentences.Count) { Stop(true); return; }
             _index++;
+            Logger.Log("reader sentence " + (_index + 1) + "/" + _sentences.Count);
             SpeakCurrent();
         }
 
@@ -91,6 +92,7 @@ namespace SesliOkuma
             if (!Active) return;
             if (Paused) { Paused = false; _engine.Resume(); }
             else { Paused = true; _engine.Pause(); }
+            Logger.Log(Paused ? "reader paused" : "reader resumed");
             if (Changed != null) Changed();
         }
 
@@ -123,6 +125,7 @@ namespace SesliOkuma
         public void Stop(bool finished)
         {
             bool was = Active;
+            if (was) Logger.Log(finished ? "reader finished" : "reader stopped");
             Active = false; Paused = false;
             try { _engine.Resume(); } catch { }
             _engine.Stop();

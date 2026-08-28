@@ -19,6 +19,7 @@ namespace SesliOkuma
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string cls, string title);
         [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
         [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vk);
+        [DllImport("user32.dll")] static extern int GetMessageTime();
 
         const int WM_HOTKEY = 0x0312, WM_SHOWSETTINGS = 0x8000 + 41, WM_SHOWABOUT = 0x8000 + 42;
         const string HostTitle = "SesliOkumaHost";
@@ -46,7 +47,8 @@ namespace SesliOkuma
         public Reader Reader;
         ReaderBar _bar;
         readonly System.Windows.Forms.Timer _gesture = new System.Windows.Forms.Timer();
-        DateTime _lastPress = DateTime.MinValue, _pressStart;
+        DateTime _pressStart;
+        int _lastPressTick = int.MinValue;
         bool _holdCandidate;
 
         public TrayApp()
@@ -346,17 +348,19 @@ namespace SesliOkuma
         void OnHotkey()
         {
             var now = DateTime.UtcNow;
-            if (_lastPress != DateTime.MinValue && (now - _lastPress).TotalMilliseconds < 450)
+            int tick = GetMessageTime();                      // time the key went down, not when we got to process it
+            bool dbl = _lastPressTick != int.MinValue && (tick - _lastPressTick) >= 0 && (tick - _lastPressTick) < 450;
+            if (dbl)
             {
                 // double press: read the clipboard
-                _lastPress = DateTime.MinValue; _holdCandidate = false; _gesture.Stop();
+                _lastPressTick = int.MinValue; _holdCandidate = false; _gesture.Stop();
                 Reader.Stop(false);
                 string clip = GetClipboardText();
                 if (clip == null || clip.Trim().Length == 0) { Logger.Log("double press: clipboard empty"); return; }
                 Read(clip, "clipboard(2x)");
                 return;
             }
-            _lastPress = now;
+            _lastPressTick = tick;
             if (Reader.Active)
             {
                 // quick release = stop, hold = pause/resume (decided by GestureTick)
