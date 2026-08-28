@@ -4,7 +4,6 @@
 <a href="https://github.com/korayorhun/SesliOkuma/releases/latest"><img alt="Download" src="https://img.shields.io/github/v/release/korayorhun/SesliOkuma?label=download&style=flat-square"></a>
 <a href="https://github.com/korayorhun/SesliOkuma/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/korayorhun/SesliOkuma/total?style=flat-square"></a>
 <a href="LICENSE.txt"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"></a>
-<a href="https://github.com/sponsors/korayorhun"><img alt="Sponsor" src="https://img.shields.io/badge/♥-sponsor-ff69b4?style=flat-square"></a>
 </p>
 
 **English** · [Türkçe](#türkçe)
