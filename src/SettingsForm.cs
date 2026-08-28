@@ -67,7 +67,7 @@ namespace SesliOkuma
         void Build()
         {
             var title = MakeLabel("Sesli Okuma", Theme.Title, Theme.Text, Pad, 22, 240, 30);
-            var close = new FlatButton { Text = "", IconGlyph = true, Size = new Size(36, 36), Location = new Point(W - Pad - 36, 20) };
+            var close = new FlatButton { Text = "\uE711", IconGlyph = true, Size = new Size(36, 36), Location = new Point(W - Pad - 36, 20) };
             close.Click += delegate { Hide(); };
             Controls.Add(title); Controls.Add(close);
             title.MouseDown += DragStart;
@@ -160,7 +160,7 @@ namespace SesliOkuma
             y += 22;
             picker.SetBounds(Pad, y, W - 2 * Pad - 56, 48);
             picker.SelectionChanged += delegate { if (!_loading) OnVoiceChanged(picker); };
-            var test = new FlatButton { Text = "", IconGlyph = true, Size = new Size(48, 48), Location = new Point(W - Pad - 48, y), Primary = true };
+            var test = new FlatButton { Text = "\uE768", IconGlyph = true, Size = new Size(48, 48), Location = new Point(W - Pad - 48, y), Primary = true };
             test.Click += delegate { Preview(picker.Selected); };
             _body.Controls.Add(picker); _body.Controls.Add(test);
             return y + 48 + 24;
@@ -275,7 +275,7 @@ namespace SesliOkuma
     public sealed class UpdateBanner : SmoothControl
     {
         readonly FlatButton _update = new FlatButton { Primary = true, Text = "Güncelle", Size = new Size(96, 34) };
-        readonly FlatButton _skip = new FlatButton { Text = "", IconGlyph = true, Size = new Size(26, 26), Tip = "Bu sürümü geç" };
+        readonly FlatButton _skip = new FlatButton { Text = "\uE711", IconGlyph = true, Size = new Size(26, 26), Tip = "Bu sürümü geç" };
         string _version = "";
         int _progress = -1;
         public bool Busy { get { return _progress >= 0; } }

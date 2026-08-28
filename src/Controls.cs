@@ -168,7 +168,7 @@ namespace SesliOkuma
             TextRenderer.DrawText(e.Graphics, name, Theme.Body, textRect, Theme.Text, TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
             textRect.Y = 26; textRect.Height = 16;
             TextRenderer.DrawText(e.Graphics, sub, Theme.Small, textRect, Theme.Muted, TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
-            TextRenderer.DrawText(e.Graphics, "", Theme.Icon, new Rectangle(Width - 34, 0, 24, Height), Theme.Muted, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            TextRenderer.DrawText(e.Graphics, "\uE70D", Theme.Icon, new Rectangle(Width - 34, 0, 24, Height), Theme.Muted, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
     }
 
@@ -204,7 +204,7 @@ namespace SesliOkuma
             var r = e.TextRectangle; r.X += 8; e.TextRectangle = r;
             base.OnRenderItemText(e);
             if (isChecked)
-                TextRenderer.DrawText(e.Graphics, "", Theme.Icon, new Rectangle(e.Item.Width - 30, 0, 20, e.Item.Height), Theme.Accent,
+                TextRenderer.DrawText(e.Graphics, "\uE73E", Theme.Icon, new Rectangle(e.Item.Width - 30, 0, 20, e.Item.Height), Theme.Accent,
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
 
