@@ -20,6 +20,7 @@ namespace SesliOkuma
         [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
         [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vk);
         [DllImport("user32.dll")] static extern int GetMessageTime();
+        [DllImport("user32.dll")] static extern uint GetClipboardSequenceNumber();
 
         const int WM_HOTKEY = 0x0312, WM_SHOWSETTINGS = 0x8000 + 41, WM_SHOWABOUT = 0x8000 + 42;
         const string HostTitle = "SesliOkumaHost";
@@ -40,7 +41,7 @@ namespace SesliOkuma
         readonly NotifyIcon _tray = new NotifyIcon();
         readonly System.Windows.Forms.Timer _pulse = new System.Windows.Forms.Timer();
         readonly System.Windows.Forms.Timer _updateTimer = new System.Windows.Forms.Timer();
-        ToolStripMenuItem _miSettings, _miStop, _miUpdates, _miAbout, _miExit;
+        ToolStripMenuItem _miSettings, _miStop, _miSave, _miUpdates, _miAbout, _miExit;
         AboutForm _about;
         SettingsForm _settings;
         bool _busy, _wasSpeaking, _hotkeyRegistered;
@@ -71,9 +72,10 @@ namespace SesliOkuma
             _miSettings = new ToolStripMenuItem(); _miSettings.Click += delegate { ToggleSettings(); };
             _miStop = new ToolStripMenuItem(); _miStop.Click += delegate { Engine.Stop(); };
             _miUpdates = new ToolStripMenuItem(); _miUpdates.Click += delegate { Updater.CheckAsync(true); ShowSettings(); };
+            _miSave = new ToolStripMenuItem(); _miSave.Click += delegate { SaveSelectionToWav(); };
             _miAbout = new ToolStripMenuItem(); _miAbout.Click += delegate { ShowAbout(); };
             _miExit = new ToolStripMenuItem(); _miExit.Click += delegate { Close(); };
-            menu.Items.AddRange(new ToolStripItem[] { _miSettings, _miStop, _miUpdates, _miAbout, new ToolStripSeparator(), _miExit });
+            menu.Items.AddRange(new ToolStripItem[] { _miSettings, _miStop, _miSave, new ToolStripSeparator(), _miUpdates, _miAbout, new ToolStripSeparator(), _miExit });
             _tray.ContextMenuStrip = menu;
             ApplyTexts();
 
@@ -126,6 +128,7 @@ namespace SesliOkuma
             _miSettings.Text = L.T("Settings");
             _miStop.Text = L.T("Stop");
             _miUpdates.Text = L.T("CheckUpdates");
+            _miSave.Text = L.T("SaveAudio") + "…";
             _miAbout.Text = L.T("About") + "…";
             _miExit.Text = L.T("Exit");
         }
@@ -329,11 +332,15 @@ namespace SesliOkuma
             keybd_event(VK_C, 0, 0, UIntPtr.Zero);
             keybd_event(VK_C, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
             keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+            uint seq = GetClipboardSequenceNumber();
             string text = null;
-            for (int i = 0; i < 12; i++)
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            while (sw.ElapsedMilliseconds < 350)
             {
-                Thread.Sleep(60);
-                try { if (Clipboard.ContainsText()) { text = Clipboard.GetText(); break; } } catch { }
+                Thread.Sleep(15);
+                if (GetClipboardSequenceNumber() == seq) continue;
+                try { if (Clipboard.ContainsText()) text = Clipboard.GetText(); } catch { }
+                break;
             }
             if (old != null) { try { Clipboard.SetText(old); } catch { } }
             return (text != null && text.Trim().Length > 0) ? text : null;
@@ -379,20 +386,57 @@ namespace SesliOkuma
             {
                 if (!Engine.IsAvailable) { Logger.Log("no voice"); return; }
                 if (Engine.Voices.Count == 0) { Engine.RefreshVoices(); EnsureDefaults(); }
+                var sw = System.Diagnostics.Stopwatch.StartNew();
                 string source = "uia";
-                string text = GetSelectionViaUia();
+                string text = GetSelectionViaUia(); long tUia = sw.ElapsedMilliseconds;
                 if (text == null) { source = "copy"; text = GetSelectionViaCopy(); }
+                long tCopy = sw.ElapsedMilliseconds;
                 if (text == null) { source = "pointer"; text = GetParagraphUnderMouse(); }
                 if (text == null) { source = "clipboard"; text = GetClipboardText(); }
-                if (text == null || text.Trim().Length == 0) { Logger.Log("no text app=" + ForegroundApp()); return; }
-                Read(text, source);
+                long tGet = sw.ElapsedMilliseconds;
+                if (text == null || text.Trim().Length == 0) { Logger.Log("no text app=" + ForegroundApp() + " (" + tGet + " ms)"); return; }
+                Read(text, source + " t=" + tUia + "/" + tCopy + "/" + tGet + "ms");
             }
             catch (Exception ex) { Logger.Log("hotkey error: " + ex.Message); }
             finally { _busy = false; }
         }
 
-        void Read(string text, string source)
+        string GrabText()
         {
+            string text = GetSelectionViaUia();
+            if (text == null) text = GetSelectionViaCopy();
+            if (text == null) text = GetParagraphUnderMouse();
+            if (text == null) text = GetClipboardText();
+            return (text != null && text.Trim().Length > 0) ? text : null;
+        }
+
+        public void SaveSelectionToWav()
+        {
+            string text = GrabText();
+            if (text == null) { _tray.ShowBalloonTip(4000, "Sesli Okuma", L.T("NoTextToSave"), ToolTipIcon.Warning); return; }
+            bool primary = TextLanguage.IsPrimary(text, Settings.PrimaryLang);
+            VoiceInfo v = primary ? (PrimaryVoice ?? OtherVoice) : (OtherVoice ?? PrimaryVoice);
+            string suggested = text.Trim(); if (suggested.Length > 40) suggested = suggested.Substring(0, 40);
+            foreach (char bad in System.IO.Path.GetInvalidFileNameChars()) suggested = suggested.Replace(bad, ' ');
+            using (var dlg = new SaveFileDialog { Filter = "WAV|*.wav", FileName = suggested.Trim() + ".wav", Title = L.T("SaveAudio") })
+            {
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+                string path = dlg.FileName; int rate = Settings.Rate;
+                var t = new Thread(delegate ()
+                {
+                    string err = null;
+                    try { Engine.SaveToWav(text, v, rate, path); } catch (Exception ex) { err = ex.Message; }
+                    try { BeginInvoke(new Action(delegate
+                    {
+                        if (err != null) { Logger.Log("save wav failed: " + err); _tray.ShowBalloonTip(5000, "Sesli Okuma", L.F("SaveFailed", err), ToolTipIcon.Error); }
+                        else { Logger.Log("saved wav " + path); _tray.ShowBalloonTip(5000, "Sesli Okuma", L.F("SavedTo", System.IO.Path.GetFileName(path)), ToolTipIcon.Info); }
+                    })); } catch { }
+                });
+                t.IsBackground = true; t.Start();
+            }
+        }
+
+        void Read(string text, string source)        {
             bool primary = TextLanguage.IsPrimary(text, Settings.PrimaryLang);
             VoiceInfo v = primary ? (PrimaryVoice ?? OtherVoice) : (OtherVoice ?? PrimaryVoice);
             Reader.Start(text, v);

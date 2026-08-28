@@ -544,12 +544,25 @@ namespace SesliOkuma
             Put(all, "pt", "Sobre", "Uma ferramenta gratuita e de código aberto para Windows que lê o texto selecionado em qualquer aplicativo com um único atalho.", "Código-fonte", "Notas da versão", "Relatar um problema / sugerir", "Projeto usado para as vozes naturais", "Apoiar o projeto", "Doação única, sem compromissos");
             AddWindowsVoice(all);
             AddReaderBar(all);
+            AddSave(all);
         }
 
         static void Put2(Dictionary<string, Dictionary<string, string>> all, string lang, string install, string installing, string done, string failed, string noVoice, string settings)
         {
             var d = all[lang];
             d["WinVoiceInstall"] = install; d["WinVoiceInstalling"] = installing; d["WinVoiceDone"] = done; d["WinVoiceFailed"] = failed; d["NoVoiceForLang"] = noVoice; d["WinVoiceSettings"] = settings;
+        }
+
+        static void AddSave(Dictionary<string, Dictionary<string, string>> all)
+        {
+            all["zh"]["SaveAudio"] = "将选中文字保存为音频文件"; all["zh"]["NoTextToSave"] = "没有可保存的文字（请先选择文字）"; all["zh"]["SavedTo"] = "已保存音频文件：{0}"; all["zh"]["SaveFailed"] = "无法保存：{0}";
+            all["tr"]["SaveAudio"] = "Seçimi ses dosyasına kaydet"; all["tr"]["NoTextToSave"] = "Kaydedilecek metin bulunamadı (önce bir metin seçin)"; all["tr"]["SavedTo"] = "Ses dosyası kaydedildi: {0}"; all["tr"]["SaveFailed"] = "Kaydedilemedi: {0}";
+            all["ar"]["SaveAudio"] = "حفظ التحديد كملف صوتي"; all["ar"]["NoTextToSave"] = "لا يوجد نص للحفظ (حدد نصاً أولاً)"; all["ar"]["SavedTo"] = "تم حفظ الملف الصوتي: {0}"; all["ar"]["SaveFailed"] = "تعذر الحفظ: {0}";
+            all["es"]["SaveAudio"] = "Guardar selección como archivo de audio"; all["es"]["NoTextToSave"] = "No hay texto para guardar (selecciona texto primero)"; all["es"]["SavedTo"] = "Archivo de audio guardado: {0}"; all["es"]["SaveFailed"] = "No se pudo guardar: {0}";
+            all["en"]["SaveAudio"] = "Save selection as audio file"; all["en"]["NoTextToSave"] = "No text to save (select some text first)"; all["en"]["SavedTo"] = "Audio file saved: {0}"; all["en"]["SaveFailed"] = "Could not save: {0}";
+            all["hi"]["SaveAudio"] = "चयन को ऑडियो फ़ाइल के रूप में सहेजें"; all["hi"]["NoTextToSave"] = "सहेजने के लिए पाठ नहीं (पहले पाठ चुनें)"; all["hi"]["SavedTo"] = "ऑडियो फ़ाइल सहेजी गई: {0}"; all["hi"]["SaveFailed"] = "सहेजा नहीं जा सका: {0}";
+            all["pt"]["SaveAudio"] = "Salvar seleção como arquivo de áudio"; all["pt"]["NoTextToSave"] = "Nenhum texto para salvar (selecione um texto primeiro)"; all["pt"]["SavedTo"] = "Arquivo de áudio salvo: {0}"; all["pt"]["SaveFailed"] = "Não foi possível salvar: {0}";
+            all["fr"]["SaveAudio"] = "Enregistrer la sélection en fichier audio"; all["fr"]["NoTextToSave"] = "Aucun texte à enregistrer (sélectionnez du texte)"; all["fr"]["SavedTo"] = "Fichier audio enregistré : {0}"; all["fr"]["SaveFailed"] = "Enregistrement impossible : {0}";
         }
 
         static void AddReaderBar(Dictionary<string, Dictionary<string, string>> all)

@@ -55,7 +55,15 @@ namespace SesliOkuma
             Stop(false);
             _sentences.Clear();
             _sentences.AddRange(Split(text));
-            if (_sentences.Count == 0) return;
+            // Online voices return audio faster for short requests: start with a short lead-in chunk.
+            if (_sentences.Count > 0 && _sentences[0].Length > 70)
+            {
+                string first = _sentences[0];
+                int cut = -1;
+                foreach (char sep in new[] { ',', ';', ':' }) { int i = first.IndexOf(sep, 20); if (i > 0 && i < 90 && (cut < 0 || i < cut)) cut = i; }
+                if (cut < 0) { int sp = first.IndexOf(' ', 60); if (sp > 0 && sp < first.Length - 20) cut = sp; }
+                if (cut > 0) { _sentences[0] = first.Substring(cut + 1).Trim(); _sentences.Insert(0, first.Substring(0, cut + 1).Trim()); }
+            }            if (_sentences.Count == 0) return;
             _voice = voice;
             Active = true; Paused = false; _index = -1;
             Next();

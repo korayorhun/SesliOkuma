@@ -40,6 +40,7 @@ Download the latest `SesliOkuma-Setup-x.y.z.exe` from **[Releases](https://githu
 | Read clipboard | press the shortcut twice |
 | Settings | click the tray icon (or run the exe again) |
 | Interface language / About | globe icon in the panel |
+| Save as audio (WAV) | tray icon → right-click → Save selection as audio file |
 | Quit | tray icon → right-click → Exit |
 
 ## Build from source
@@ -74,6 +75,8 @@ Windows 10/11 için küçük bir sistem tepsisi aracı: **herhangi bir uygulamad
 - Kurulum yönetici yetkisi istemez; **veri toplamaz**. Ayarlar ve günlük: `%LOCALAPPDATA%\SesliOkuma\`.
 
 **Kurulum:** [Releases](https://github.com/korayorhun/SesliOkuma/releases/latest) sayfasından `SesliOkuma-Setup-x.y.z.exe`. İmzasız olduğu için SmartScreen uyarısı çıkabilir: *Ek bilgi → Yine de çalıştır*.
+
+**Ses dosyasına kaydet:** tepsi ikonu → sağ tık → "Seçimi ses dosyasına kaydet" (WAV).
 
 **Hakkında & destek:** dil menüsünün altındaki *Hakkında* kartında kaynak kod, sürüm notları, sorun bildirme ve isteğe bağlı **Destek ol ♥** (GitHub Sponsors, tek seferlik) bulunur.
 

@@ -158,6 +158,24 @@ namespace SesliOkuma
             try { Call(_voice, "Speak", "", 3); } catch { }
         }
 
+        // Renders text to a WAV file with a separate voice instance, so playback is not disturbed. Blocking; call on a worker thread.
+        public void SaveToWav(string text, VoiceInfo voice, int rate, string path)
+        {
+            object v = Activator.CreateInstance(_type);
+            object stream = Activator.CreateInstance(Type.GetTypeFromProgID("SAPI.SpFileStream"));
+            try
+            {
+                object fmt = Get(stream, "Format");
+                Set(fmt, "Type", 34);                                   // SAFT44kHz16BitMono
+                Call(stream, "Open", path, 3, false);                    // SSFMCreateForWrite
+                Set(v, "AudioOutputStream", stream);
+                if (voice != null) Set(v, "Voice", voice.Token);
+                Set(v, "Rate", Math.Max(-10, Math.Min(10, rate)));
+                Call(v, "Speak", text, 0);                               // synchronous
+            }
+            finally { try { Call(stream, "Close"); } catch { } }
+        }
+
         public void Pause() { if (_voice == null) return; try { Call(_voice, "Pause"); } catch { } }
         public void Resume() { if (_voice == null) return; try { Call(_voice, "Resume"); } catch { } }
     }
