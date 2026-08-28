@@ -1,6 +1,6 @@
-; Inno Setup script for Sesli Okuma (per-user install, no admin rights needed)
+﻿; Inno Setup script for Sesli Okuma (per-user install, no admin rights needed)
 #define MyAppName "Sesli Okuma"
-#define MyAppVersion "1.0.2"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "Koray Orhun"
 #define MyAppURL "https://github.com/korayorhun/SesliOkuma"
 #define MyAppExeName "SesliOkuma.exe"
@@ -29,16 +29,44 @@ WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 LicenseFile=..\LICENSE.txt
-InfoAfterFile=after-install.txt
 CloseApplications=yes
 CloseApplicationsFilter=*.exe
+ShowLanguageDialog=auto
 
 [Languages]
-Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
-Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "english"; MessagesFile: "compiler:Default.isl"; InfoAfterFile: "after-install.en.txt"
+Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"; InfoAfterFile: "after-install.tr.txt"
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"; InfoAfterFile: "after-install.es.txt"
+Name: "french"; MessagesFile: "compiler:Languages\French.isl"; InfoAfterFile: "after-install.fr.txt"
+Name: "portuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"; InfoAfterFile: "after-install.pt.txt"
+Name: "arabic"; MessagesFile: "compiler:Languages\Arabic.isl"; InfoAfterFile: "after-install.ar.txt"
+Name: "hindi"; MessagesFile: "compiler:Languages\Hindi.islu"; InfoAfterFile: "after-install.en.txt"
+
+[CustomMessages]
+english.StartupTask=Start with Windows
+english.RunNow=Start Sesli Okuma now
+english.Uninstall=Uninstall
+turkish.StartupTask=Windows ile birlikte başlat
+turkish.RunNow=Sesli Okuma'yı şimdi başlat
+turkish.Uninstall=Kaldır
+spanish.StartupTask=Iniciar con Windows
+spanish.RunNow=Iniciar Sesli Okuma ahora
+spanish.Uninstall=Desinstalar
+french.StartupTask=Démarrer avec Windows
+french.RunNow=Lancer Sesli Okuma maintenant
+french.Uninstall=Désinstaller
+portuguese.StartupTask=Iniciar com o Windows
+portuguese.RunNow=Iniciar o Sesli Okuma agora
+portuguese.Uninstall=Desinstalar
+arabic.StartupTask=التشغيل مع Windows
+arabic.RunNow=تشغيل Sesli Okuma الآن
+arabic.Uninstall=إزالة
+hindi.StartupTask=Windows के साथ शुरू करें
+hindi.RunNow=Sesli Okuma अभी शुरू करें
+hindi.Uninstall=अनइंस्टॉल
 
 [Tasks]
-Name: "startup"; Description: "Windows ile birlikte başlat"; GroupDescription: "Ek seçenekler:"
+Name: "startup"; Description: "{cm:StartupTask}"
 
 [Files]
 Source: "..\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
@@ -47,11 +75,11 @@ Source: "..\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{group}\{#MyAppName} - Kaldır"; Filename: "{uninstallexe}"
+Name: "{group}\{#MyAppName} - {cm:Uninstall}"; Filename: "{uninstallexe}"
 Name: "{userstartup}\SesliOkuma"; Filename: "{app}\{#MyAppExeName}"; Tasks: startup
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "Sesli Okuma'yı şimdi başlat"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:RunNow}"; Flags: nowait postinstall skipifsilent
 Filename: "{app}\{#MyAppExeName}"; Flags: nowait; Check: IsSelfUpdate
 
 [UninstallRun]

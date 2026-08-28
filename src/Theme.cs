@@ -11,7 +11,7 @@ namespace SesliOkuma
     {
         public static bool Dark;
         public static Color Bg, Card, CardHover, Border, Text, Muted, Accent, AccentHover, AccentText, Track, AccentSoft;
-        public static Font Body, Small, Title, Caption, Icon;
+        public static Font Body, Small, Title, Caption, Icon, Mono;
 
         public static void Load()
         {
@@ -32,6 +32,7 @@ namespace SesliOkuma
             Small = new Font("Segoe UI", 8.5f);
             Caption = new Font("Segoe UI Semibold", 8f);
             Title = new Font("Segoe UI Semibold", 15f);
+            Mono = new Font("Segoe UI Semibold", 10.5f);
             Icon = new Font("Segoe MDL2 Assets", 10f);
         }
 
@@ -74,6 +75,12 @@ namespace SesliOkuma
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+        }
+
+        // Text flags honoring right-to-left UI languages.
+        public static TextFormatFlags Flags(TextFormatFlags f)
+        {
+            return L.IsRtl ? (f | TextFormatFlags.RightToLeft) : f;
         }
     }
 

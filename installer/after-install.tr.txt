@@ -1,0 +1,15 @@
+﻿Sesli Okuma kuruldu.
+
+KULLANIM
+  - Herhangi bir programda metni seçin, Ctrl + Alt + S'e basın - metin okunur.
+  - Okurken tekrar Ctrl + Alt + S - susturur.
+  - Görev çubuğundaki (gizli simgeler alanındaki) konuşma balonu ikonuna tıklayın - ayar paneli açılır;
+    arayüz dili, kısayol, dillere göre ses, hız, Windows ile başlatma buradan ayarlanır.
+
+DOĞAL SESLER (İSTEĞE BAĞLI)
+  Windows'un yerleşik sesleri robotiktir. Ayar paneli, ücretsiz ve açık kaynak NaturalVoiceSAPIAdapter'ı
+  tek tıkla kurmayı önerir; Emel ve Ahmet dahil Microsoft'un çevrimiçi neural sesleri eklenir (internet gerekir).
+  Bağımsız bir projedir - https://github.com/gexgd0419/NaturalVoiceSAPIAdapter
+
+GİZLİLİK
+  Sesli Okuma hiçbir veri toplamaz ve göndermez. Metin yalnızca seçtiğiniz ses sağlayıcısına (Windows SAPI) iletilir.

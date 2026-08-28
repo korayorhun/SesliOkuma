@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 
@@ -6,14 +7,18 @@ namespace SesliOkuma
 {
     public sealed class AppSettings
     {
-        public string TrVoiceId = "";
-        public string EnVoiceId = "";
+        public string PrimaryVoiceId = "";
+        public string OtherVoiceId = "";
+        public string PrimaryLang = "";       // two-letter language whose texts use the primary voice
+        public string Language = "";          // UI language; empty = follow system
+        public string Hotkey = "Ctrl+Alt+S";
         public int Rate = 0;
         public bool AutoUpdate = true;
         public string SkipVersion = "";
         public DateTime LastUpdateCheck = DateTime.MinValue;
 
         public static string AppDir { get { return AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\'); } }
+
         // Per-user data folder; the install folder may be read-only.
         public static string DataDir
         {
@@ -37,12 +42,18 @@ namespace SesliOkuma
                     int eq = line.IndexOf('=');
                     if (eq <= 0) continue;
                     string key = line.Substring(0, eq).Trim(), val = line.Substring(eq + 1).Trim();
-                    if (key == "TrVoice") s.TrVoiceId = val;
-                    else if (key == "EnVoice") s.EnVoiceId = val;
-                    else if (key == "Rate") { int r; if (int.TryParse(val, out r)) s.Rate = r; }
-                    else if (key == "AutoUpdate") s.AutoUpdate = val != "0";
-                    else if (key == "SkipVersion") s.SkipVersion = val;
-                    else if (key == "LastUpdateCheck") { DateTime t; if (DateTime.TryParse(val, null, System.Globalization.DateTimeStyles.RoundtripKind, out t)) s.LastUpdateCheck = t; }
+                    switch (key)
+                    {
+                        case "TrVoice": case "PrimaryVoice": s.PrimaryVoiceId = val; break;   // TrVoice/EnVoice: 1.0.x keys
+                        case "EnVoice": case "OtherVoice": s.OtherVoiceId = val; break;
+                        case "PrimaryLang": s.PrimaryLang = val; break;
+                        case "Language": s.Language = val; break;
+                        case "Hotkey": s.Hotkey = val; break;
+                        case "Rate": { int r; if (int.TryParse(val, out r)) s.Rate = r; break; }
+                        case "AutoUpdate": s.AutoUpdate = val != "0"; break;
+                        case "SkipVersion": s.SkipVersion = val; break;
+                        case "LastUpdateCheck": { DateTime t; if (DateTime.TryParse(val, null, DateTimeStyles.RoundtripKind, out t)) s.LastUpdateCheck = t; break; }
+                    }
                 }
             }
             catch (Exception ex) { Logger.Log("settings load: " + ex.Message); }
@@ -51,7 +62,13 @@ namespace SesliOkuma
 
         public void Save()
         {
-            try { File.WriteAllLines(FilePath, new[] { "TrVoice=" + TrVoiceId, "EnVoice=" + EnVoiceId, "Rate=" + Rate, "AutoUpdate=" + (AutoUpdate ? "1" : "0"), "SkipVersion=" + SkipVersion, "LastUpdateCheck=" + LastUpdateCheck.ToString("o") }); }
+            try
+            {
+                File.WriteAllLines(FilePath, new[] {
+                    "PrimaryVoice=" + PrimaryVoiceId, "OtherVoice=" + OtherVoiceId, "PrimaryLang=" + PrimaryLang,
+                    "Language=" + Language, "Hotkey=" + Hotkey, "Rate=" + Rate,
+                    "AutoUpdate=" + (AutoUpdate ? "1" : "0"), "SkipVersion=" + SkipVersion, "LastUpdateCheck=" + LastUpdateCheck.ToString("o") });
+            }
             catch (Exception ex) { Logger.Log("settings save: " + ex.Message); }
         }
     }
@@ -74,7 +91,7 @@ namespace SesliOkuma
                 Type lt = link.GetType();
                 lt.InvokeMember("TargetPath", BindingFlags.SetProperty, null, link, new object[] { exe });
                 lt.InvokeMember("WorkingDirectory", BindingFlags.SetProperty, null, link, new object[] { Path.GetDirectoryName(exe) });
-                lt.InvokeMember("Description", BindingFlags.SetProperty, null, link, new object[] { "Sesli Okuma - Ctrl+Alt+S" });
+                lt.InvokeMember("Description", BindingFlags.SetProperty, null, link, new object[] { "Sesli Okuma" });
                 lt.InvokeMember("Save", BindingFlags.InvokeMethod, null, link, null);
             }
             catch (Exception ex) { Logger.Log("startup shortcut: " + ex.Message); }

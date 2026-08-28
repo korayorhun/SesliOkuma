@@ -71,7 +71,7 @@ namespace SesliOkuma
                     if (error != null)
                     {
                         Logger.Log("update check failed: " + error);
-                        Fire(CheckFinished, manual ? "Güncelleme denetlenemedi (ağ?)" : null);
+                        Fire(CheckFinished, manual ? L.T("CheckFailed") : null);
                         return;
                     }
                     if (info != null && info.Version > CurrentVersion)
@@ -79,12 +79,12 @@ namespace SesliOkuma
                         Available = info;
                         Logger.Log("update available: " + info.Tag);
                         if (UpdateFound != null) UpdateFound(info);
-                        Fire(CheckFinished, "Yeni sürüm " + info.Version.ToString(3) + " hazır");
+                        Fire(CheckFinished, L.F("NewVersion", info.Version.ToString(3)));
                     }
                     else
                     {
                         Available = null;
-                        Fire(CheckFinished, manual ? "Güncel: " + CurrentVersionText : null);
+                        Fire(CheckFinished, manual ? L.F("UpToDate", CurrentVersionText) : null);
                     }
                 });
             });
@@ -143,7 +143,7 @@ namespace SesliOkuma
             wc.DownloadFileCompleted += delegate (object s, System.ComponentModel.AsyncCompletedEventArgs e)
             {
                 wc.Dispose();
-                if (e.Cancelled || e.Error != null) { Fail("İndirme başarısız: " + (e.Error != null ? e.Error.Message : "iptal")); return; }
+                if (e.Cancelled || e.Error != null) { Fail((e.Error != null ? e.Error.Message : L.T("Cancelled"))); return; }
                 var t = new Thread(delegate ()
                 {
                     string err = null;
@@ -158,32 +158,32 @@ namespace SesliOkuma
                             Process.Start(new ProcessStartInfo(setup, "/SILENT /NORESTART /SP- /UPDATE=1") { UseShellExecute = true });
                             Application.Exit();
                         }
-                        catch (Exception ex) { Fail("Kurulum başlatılamadı: " + ex.Message); }
+                        catch (Exception ex) { Fail(ex.Message); }
                     });
                 });
                 t.IsBackground = true;
                 t.Start();
             };
             try { wc.DownloadFileAsync(new Uri(info.SetupUrl), setup); }
-            catch (Exception ex) { Fail("İndirme başlatılamadı: " + ex.Message); }
+            catch (Exception ex) { Fail(ex.Message); }
         }
 
         void Fail(string msg) { _busy = false; Logger.Log("update failed: " + msg); if (UpdateFailed != null) UpdateFailed(msg); }
 
         static void Verify(string file, string shaUrl)
         {
-            if (shaUrl == null) throw new InvalidDataException("Bu sürüm için doğrulama dosyası (.sha256) yayınlanmamış");
+            if (shaUrl == null) throw new InvalidDataException("no .sha256 published for this release");
             var wc = new WebClient();
             wc.Headers[HttpRequestHeader.UserAgent] = UserAgent;
             string expected = wc.DownloadString(shaUrl).Trim();
-            if (expected.Length < 64) throw new InvalidDataException("Doğrulama dosyası geçersiz");
+            if (expected.Length < 64) throw new InvalidDataException("invalid .sha256 file");
             expected = expected.Substring(0, 64);
             string actual;
             using (var sha = SHA256.Create())
             using (var fs = File.OpenRead(file))
                 actual = BitConverter.ToString(sha.ComputeHash(fs)).Replace("-", "");
             if (!string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("İndirilen dosya doğrulanamadı (SHA-256 uyuşmuyor)");
+                throw new InvalidDataException("SHA-256 mismatch");
         }
     }
 }

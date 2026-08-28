@@ -1,0 +1,15 @@
+﻿Sesli Okuma foi instalado.
+
+COMO USAR
+  - Selecione um texto em qualquer programa e pressione Ctrl + Alt + S - ele é lido em voz alta.
+  - Pressione Ctrl + Alt + S novamente durante a leitura - ela para.
+  - Clique no ícone de balão na bandeja do sistema para abrir o painel de configurações -
+    idioma da interface, atalho, vozes por idioma, velocidade, iniciar com o Windows.
+
+VOZES NATURAIS (OPCIONAL)
+  O painel oferece a instalação com um clique do NaturalVoiceSAPIAdapter, gratuito e de código aberto,
+  que adiciona as vozes neurais online da Microsoft (requer internet). Projeto independente -
+  https://github.com/gexgd0419/NaturalVoiceSAPIAdapter
+
+PRIVACIDADE
+  O Sesli Okuma não coleta nem envia dados. O texto é passado apenas ao provedor de voz escolhido (Windows SAPI).
