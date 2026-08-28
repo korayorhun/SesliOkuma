@@ -542,6 +542,25 @@ namespace SesliOkuma
             Put(all, "fr", "À propos", "Un outil Windows gratuit et open source qui lit le texte sélectionné dans n'importe quelle application avec un seul raccourci.", "Code source", "Notes de version", "Signaler un problème / suggérer", "Projet utilisé pour les voix naturelles", "Soutenir le projet", "Don unique, sans contrepartie");
             Put(all, "ar", "حول", "أداة Windows مجانية ومفتوحة المصدر تقرأ النص الذي تحدده في أي تطبيق باختصار واحد.", "الشيفرة المصدرية", "ملاحظات الإصدار", "الإبلاغ عن مشكلة / اقتراح", "المشروع المستخدم للأصوات الطبيعية", "ادعم المشروع", "تبرع لمرة واحدة دون شروط");
             Put(all, "pt", "Sobre", "Uma ferramenta gratuita e de código aberto para Windows que lê o texto selecionado em qualquer aplicativo com um único atalho.", "Código-fonte", "Notas da versão", "Relatar um problema / sugerir", "Projeto usado para as vozes naturais", "Apoiar o projeto", "Doação única, sem compromissos");
+            AddWindowsVoice(all);
+        }
+
+        static void Put2(Dictionary<string, Dictionary<string, string>> all, string lang, string install, string installing, string done, string failed, string noVoice, string settings)
+        {
+            var d = all[lang];
+            d["WinVoiceInstall"] = install; d["WinVoiceInstalling"] = installing; d["WinVoiceDone"] = done; d["WinVoiceFailed"] = failed; d["NoVoiceForLang"] = noVoice; d["WinVoiceSettings"] = settings;
+        }
+
+        static void AddWindowsVoice(Dictionary<string, Dictionary<string, string>> all)
+        {
+            Put2(all, "tr", "Windows sesini ekle ({0})", "Windows sesi kuruluyor — yönetici onayı, birkaç dakika…", "Windows sesi eklendi", "Windows sesi kurulamadı: {0}", "Bu dil için ses yok — Windows sesini eklemek için tıklayın", "Windows ses ayarları…");
+            Put2(all, "en", "Add Windows voice ({0})", "Installing Windows voice — admin approval, a few minutes…", "Windows voice added", "Windows voice could not be installed: {0}", "No voice for this language — click to add the Windows voice", "Windows speech settings…");
+            Put2(all, "zh", "添加 Windows 语音（{0}）", "正在安装 Windows 语音 — 需要管理员确认，需几分钟…", "已添加 Windows 语音", "无法安装 Windows 语音：{0}", "此语言没有语音 — 点击添加 Windows 语音", "Windows 语音设置…");
+            Put2(all, "hi", "Windows आवाज़ जोड़ें ({0})", "Windows आवाज़ इंस्टॉल हो रही है — प्रशासक अनुमति, कुछ मिनट…", "Windows आवाज़ जोड़ी गई", "Windows आवाज़ इंस्टॉल नहीं हो सकी: {0}", "इस भाषा के लिए कोई आवाज़ नहीं — Windows आवाज़ जोड़ने के लिए क्लिक करें", "Windows वाक् सेटिंग्स…");
+            Put2(all, "es", "Añadir voz de Windows ({0})", "Instalando la voz de Windows — permiso de administrador, unos minutos…", "Voz de Windows añadida", "No se pudo instalar la voz de Windows: {0}", "No hay voz para este idioma — haz clic para añadir la voz de Windows", "Ajustes de voz de Windows…");
+            Put2(all, "fr", "Ajouter la voix Windows ({0})", "Installation de la voix Windows — autorisation administrateur, quelques minutes…", "Voix Windows ajoutée", "Impossible d'installer la voix Windows : {0}", "Aucune voix pour cette langue — cliquez pour ajouter la voix Windows", "Paramètres vocaux de Windows…");
+            Put2(all, "ar", "إضافة صوت Windows ({0})", "جارٍ تثبيت صوت Windows — موافقة المسؤول، بضع دقائق…", "تمت إضافة صوت Windows", "تعذر تثبيت صوت Windows: {0}", "لا يوجد صوت لهذه اللغة — انقر لإضافة صوت Windows", "إعدادات الكلام في Windows…");
+            Put2(all, "pt", "Adicionar voz do Windows ({0})", "Instalando a voz do Windows — permissão de administrador, alguns minutos…", "Voz do Windows adicionada", "Não foi possível instalar a voz do Windows: {0}", "Nenhuma voz para este idioma — clique para adicionar a voz do Windows", "Configurações de fala do Windows…");
         }
     }
 }

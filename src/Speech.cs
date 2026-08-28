@@ -5,8 +5,11 @@ using System.Reflection;
 
 namespace SesliOkuma
 {
+    public enum VoiceProvider { Sapi }
+
     public sealed class VoiceInfo
     {
+        public VoiceProvider Provider = VoiceProvider.Sapi;
         public string Id;
         public string Description;
         public string Name;          // "Emel", "AndrewMultilingual", "Tolga"

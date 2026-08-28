@@ -157,7 +157,7 @@ namespace SesliOkuma
 
             _status.Font = Theme.Small; _status.ForeColor = Theme.Muted; _status.BackColor = Color.Transparent;
             _status.SetBounds(Pad, y, W - 2 * Pad - 116, 18);
-            _status.Click += delegate { if (_hint.Length > 0 && _status.Text == _hint) NaturalVoicesInstaller.OpenWindowsVoiceSettings(); };
+            _status.Click += delegate { if (_hint.Length > 0 && _status.Text == _hint) { if (WindowsVoicePack.CultureFor(_app.Settings.PrimaryLang) != null) InstallWindowsVoice(); else NaturalVoicesInstaller.OpenWindowsVoiceSettings(); } };
             _body.Controls.Add(_status);
             _version.Font = Theme.Small; _version.ForeColor = Theme.Muted; _version.BackColor = Color.Transparent; _version.Cursor = Cursors.Hand;
             _version.TextAlign = ContentAlignment.TopRight; _version.SetBounds(W - Pad - 116, y, 116, 18);
@@ -253,12 +253,30 @@ namespace SesliOkuma
                 menu.Items.Add(item);
             }
             menu.Items.Add(new ToolStripSeparator());
-            var more = new ToolStripMenuItem(L.T("MoreVoices"));
+            string culture = WindowsVoicePack.CultureFor(_app.Settings.PrimaryLang);
+            if (culture != null)
+            {
+                var win = new ToolStripMenuItem(L.F("WinVoiceInstall", WindowsVoicePack.VoiceNameFor(_app.Settings.PrimaryLang)));
+                win.Click += delegate { InstallWindowsVoice(); };
+                menu.Items.Add(win);
+            }
+            var more = new ToolStripMenuItem(L.T("WinVoiceSettings"));
             more.Click += delegate { NaturalVoicesInstaller.OpenWindowsVoiceSettings(); };
             menu.Items.Add(more);
             menu.Opened += delegate { _langMenuOpen = true; };
             menu.Closed += delegate { _langMenuOpen = false; };
             menu.Show(_primaryCaption, new Point(0, _primaryCaption.Height + 4));
+        }
+
+        bool _winVoiceBusy;
+        void InstallWindowsVoice()
+        {
+            if (_winVoiceBusy) return;
+            _winVoiceBusy = true;
+            _status.Text = L.T("WinVoiceInstalling"); _status.ForeColor = Theme.Accent; _status.Cursor = Cursors.Default; _statusTimer.Stop();
+            WindowsVoicePack.InstallAsync(this, _app.Settings.PrimaryLang,
+                delegate { _winVoiceBusy = false; _app.RefreshVoices(); Flash(L.T("WinVoiceDone")); },
+                delegate (string err) { _winVoiceBusy = false; Flash(L.F("WinVoiceFailed", err)); });
         }
 
         static Label MakeLabel(string text, Font font, Color color, int x, int y, int w, int h)
@@ -301,7 +319,8 @@ namespace SesliOkuma
         {
             bool hasPrimaryVoice = false;
             foreach (var v in _app.Engine.Voices) if (v.Lang2 == _app.Settings.PrimaryLang) { hasPrimaryVoice = true; break; }
-            _hint = hasPrimaryVoice ? "" : L.T("MoreVoices");
+            if (_winVoiceBusy) return;
+            _hint = hasPrimaryVoice ? "" : L.T("NoVoiceForLang");
             _status.Text = _hint;
             _status.ForeColor = hasPrimaryVoice ? Theme.Muted : Theme.Accent;
             _status.Cursor = hasPrimaryVoice ? Cursors.Default : Cursors.Hand;
