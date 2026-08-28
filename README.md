@@ -6,6 +6,8 @@ Windows 11 için küçük bir araç: **herhangi bir uygulamada seçtiğiniz metn
 - Veri toplamaz; okunan metin sadece seçtiğiniz Windows ses sağlayıcısına (SAPI) gider.
 - Ayarlar ve günlük: `%LOCALAPPDATA%\SesliOkuma\`
 
+<p align="center"><img src="docs/panel.png" width="412" alt="Sesli Okuma ayar paneli"></p>
+
 ## Kurulum
 
 [Releases](https://github.com/korayorhun/SesliOkuma/releases) sayfasından en son `SesliOkuma-Setup-x.y.z.exe` dosyasını indirip çalıştırın. İmzasız bir program olduğu için Windows SmartScreen "tanınmayan uygulama" uyarısı verebilir: *Ek bilgi → Yine de çalıştır*.
