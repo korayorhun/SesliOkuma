@@ -52,6 +52,7 @@ Name: "{userstartup}\SesliOkuma"; Filename: "{app}\{#MyAppExeName}"; Tasks: star
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Sesli Okuma'yı şimdi başlat"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Flags: nowait; Check: IsSelfUpdate
 
 [UninstallRun]
 Filename: "{sys}\taskkill.exe"; Parameters: "/IM {#MyAppExeName} /F"; Flags: runhidden; RunOnceId: "KillSesliOkuma"
@@ -61,6 +62,11 @@ Type: files; Name: "{userstartup}\SesliOkuma.lnk"
 Type: filesandordirs; Name: "{localappdata}\SesliOkuma"
 
 [Code]
+function IsSelfUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:UPDATE|0}') = '1';
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;

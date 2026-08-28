@@ -33,6 +33,8 @@ namespace SesliOkuma
         readonly System.Windows.Forms.Timer _pulse = new System.Windows.Forms.Timer();
         SettingsForm _settings;
         bool _busy, _wasSpeaking;
+        public Updater Updater;
+        readonly System.Windows.Forms.Timer _updateTimer = new System.Windows.Forms.Timer();
 
         public TrayApp()
         {
@@ -53,6 +55,7 @@ namespace SesliOkuma
             var menu = new ContextMenuStrip { Renderer = new MenuRenderer(), ShowImageMargin = false, Font = Theme.Body, BackColor = Theme.Card, ForeColor = Theme.Text };
             menu.Items.Add("Ayarlar", null, delegate { ToggleSettings(); });
             menu.Items.Add("Sustur", null, delegate { Engine.Stop(); });
+            menu.Items.Add("Güncellemeleri denetle", null, delegate { Updater.CheckAsync(true); ShowSettings(); });
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Çıkış", null, delegate { Close(); });
             _tray.ContextMenuStrip = menu;
@@ -66,6 +69,22 @@ namespace SesliOkuma
                 _tray.Icon = speaking ? _speakingIcon : _idleIcon;
             };
             _pulse.Start();
+
+            Updater = new Updater(this);
+            Updater.UpdateFound += delegate (UpdateInfo u)
+            {
+                if (u.Version.ToString(3) == Settings.SkipVersion) return;
+                _tray.ShowBalloonTip(8000, "Sesli Okuma " + u.Version.ToString(3) + " hazır", "Güncellemek için tıklayın.", ToolTipIcon.Info);
+            };
+            Updater.CheckFinished += delegate { Settings.LastUpdateCheck = DateTime.UtcNow; Settings.Save(); };
+            _tray.BalloonTipClicked += delegate { if (Updater.Available != null) ShowSettings(); };
+            _updateTimer.Interval = 60 * 1000;
+            _updateTimer.Tick += delegate
+            {
+                _updateTimer.Interval = 6 * 60 * 60 * 1000;
+                if (Settings.AutoUpdate && DateTime.UtcNow - Settings.LastUpdateCheck >= Updater.CheckInterval) Updater.CheckAsync(false);
+            };
+            _updateTimer.Start();
 
             if (!RegisterHotKey(Handle, 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_S))
             {
@@ -115,6 +134,12 @@ namespace SesliOkuma
         {
             if (_settings == null || _settings.IsDisposed) _settings = new SettingsForm(this);
             if (_settings.Visible) _settings.Hide(); else _settings.ShowNearTray();
+        }
+
+        void ShowSettings()
+        {
+            if (_settings == null || _settings.IsDisposed) _settings = new SettingsForm(this);
+            if (!_settings.Visible) _settings.ShowNearTray();
         }
 
         protected override void SetVisibleCore(bool value) { base.SetVisibleCore(false); }
@@ -216,6 +241,7 @@ namespace SesliOkuma
         {
             UnregisterHotKey(Handle, 1);
             _pulse.Stop();
+            _updateTimer.Stop();
             Engine.Stop();
             _tray.Visible = false;
             base.OnFormClosed(e);

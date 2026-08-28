@@ -10,7 +10,7 @@ namespace SesliOkuma
     public static class Theme
     {
         public static bool Dark;
-        public static Color Bg, Card, CardHover, Border, Text, Muted, Accent, AccentHover, AccentText, Track;
+        public static Color Bg, Card, CardHover, Border, Text, Muted, Accent, AccentHover, AccentText, Track, AccentSoft;
         public static Font Body, Small, Title, Caption, Icon;
 
         public static void Load()
@@ -20,13 +20,13 @@ namespace SesliOkuma
             {
                 Bg = Rgb(0x16171D); Card = Rgb(0x1F2129); CardHover = Rgb(0x272A34); Border = Rgb(0x2E3140);
                 Text = Rgb(0xEDEEF2); Muted = Rgb(0x8A8FA3); Accent = Rgb(0x6C8CFF); AccentHover = Rgb(0x86A0FF);
-                AccentText = Color.White; Track = Rgb(0x2E3140);
+                AccentText = Color.White; Track = Rgb(0x2E3140); AccentSoft = Rgb(0x1F2740);
             }
             else
             {
                 Bg = Rgb(0xF6F7FB); Card = Color.White; CardHover = Rgb(0xF0F2F8); Border = Rgb(0xE1E4EC);
                 Text = Rgb(0x1B1D24); Muted = Rgb(0x6B7080); Accent = Rgb(0x3B6CFF); AccentHover = Rgb(0x2F5BE0);
-                AccentText = Color.White; Track = Rgb(0xE1E4EC);
+                AccentText = Color.White; Track = Rgb(0xE1E4EC); AccentSoft = Rgb(0xE8EEFF);
             }
             Body = new Font("Segoe UI", 10f);
             Small = new Font("Segoe UI", 8.5f);

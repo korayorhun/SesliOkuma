@@ -9,6 +9,9 @@ namespace SesliOkuma
         public string TrVoiceId = "";
         public string EnVoiceId = "";
         public int Rate = 0;
+        public bool AutoUpdate = true;
+        public string SkipVersion = "";
+        public DateTime LastUpdateCheck = DateTime.MinValue;
 
         public static string AppDir { get { return AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\'); } }
         // Per-user data folder; the install folder may be read-only.
@@ -37,6 +40,9 @@ namespace SesliOkuma
                     if (key == "TrVoice") s.TrVoiceId = val;
                     else if (key == "EnVoice") s.EnVoiceId = val;
                     else if (key == "Rate") { int r; if (int.TryParse(val, out r)) s.Rate = r; }
+                    else if (key == "AutoUpdate") s.AutoUpdate = val != "0";
+                    else if (key == "SkipVersion") s.SkipVersion = val;
+                    else if (key == "LastUpdateCheck") { DateTime t; if (DateTime.TryParse(val, null, System.Globalization.DateTimeStyles.RoundtripKind, out t)) s.LastUpdateCheck = t; }
                 }
             }
             catch (Exception ex) { Logger.Log("settings load: " + ex.Message); }
@@ -45,7 +51,7 @@ namespace SesliOkuma
 
         public void Save()
         {
-            try { File.WriteAllLines(FilePath, new[] { "TrVoice=" + TrVoiceId, "EnVoice=" + EnVoiceId, "Rate=" + Rate }); }
+            try { File.WriteAllLines(FilePath, new[] { "TrVoice=" + TrVoiceId, "EnVoice=" + EnVoiceId, "Rate=" + Rate, "AutoUpdate=" + (AutoUpdate ? "1" : "0"), "SkipVersion=" + SkipVersion, "LastUpdateCheck=" + LastUpdateCheck.ToString("o") }); }
             catch (Exception ex) { Logger.Log("settings save: " + ex.Message); }
         }
     }

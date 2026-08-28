@@ -7,7 +7,7 @@ $ico = Join-Path $d 'assets\SesliOkuma.ico'
 $running = Get-Process SesliOkuma -ErrorAction SilentlyContinue
 if ($running) { $running | Stop-Process -Force; Start-Sleep -Milliseconds 800 }
 $args = @('/nologo','/codepage:65001','/target:winexe','/platform:anycpu','/optimize+',"/out:$out",
-  '/r:System.Windows.Forms.dll','/r:System.Drawing.dll',"/r:$fw\WPF\UIAutomationClient.dll","/r:$fw\WPF\UIAutomationTypes.dll")
+  '/r:System.Windows.Forms.dll','/r:System.Drawing.dll','/r:System.Web.Extensions.dll',"/r:$fw\WPF\UIAutomationClient.dll","/r:$fw\WPF\UIAutomationTypes.dll")
 if (Test-Path $ico) { $args += "/win32icon:$ico" }
 $args += (Get-ChildItem (Join-Path $d 'src') -Filter *.cs | ForEach-Object FullName)
 & "$fw\csc.exe" @args
