@@ -19,7 +19,7 @@ namespace SesliOkuma
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string cls, string title);
         [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
-        const int WM_HOTKEY = 0x0312, WM_SHOWSETTINGS = 0x8000 + 41;
+        const int WM_HOTKEY = 0x0312, WM_SHOWSETTINGS = 0x8000 + 41, WM_SHOWABOUT = 0x8000 + 42;
         const string HostTitle = "SesliOkumaHost";
         const uint MOD_NOREPEAT = 0x4000;
         const byte VK_CONTROL = 0x11, VK_MENU = 0x12, VK_SHIFT = 0x10, VK_LWIN = 0x5B, VK_C = 0x43;
@@ -38,7 +38,8 @@ namespace SesliOkuma
         readonly NotifyIcon _tray = new NotifyIcon();
         readonly System.Windows.Forms.Timer _pulse = new System.Windows.Forms.Timer();
         readonly System.Windows.Forms.Timer _updateTimer = new System.Windows.Forms.Timer();
-        ToolStripMenuItem _miSettings, _miStop, _miUpdates, _miExit;
+        ToolStripMenuItem _miSettings, _miStop, _miUpdates, _miAbout, _miExit;
+        AboutForm _about;
         SettingsForm _settings;
         bool _busy, _wasSpeaking, _hotkeyRegistered;
 
@@ -62,8 +63,9 @@ namespace SesliOkuma
             _miSettings = new ToolStripMenuItem(); _miSettings.Click += delegate { ToggleSettings(); };
             _miStop = new ToolStripMenuItem(); _miStop.Click += delegate { Engine.Stop(); };
             _miUpdates = new ToolStripMenuItem(); _miUpdates.Click += delegate { Updater.CheckAsync(true); ShowSettings(); };
+            _miAbout = new ToolStripMenuItem(); _miAbout.Click += delegate { ShowAbout(); };
             _miExit = new ToolStripMenuItem(); _miExit.Click += delegate { Close(); };
-            menu.Items.AddRange(new ToolStripItem[] { _miSettings, _miStop, _miUpdates, new ToolStripSeparator(), _miExit });
+            menu.Items.AddRange(new ToolStripItem[] { _miSettings, _miStop, _miUpdates, _miAbout, new ToolStripSeparator(), _miExit });
             _tray.ContextMenuStrip = menu;
             ApplyTexts();
 
@@ -109,6 +111,7 @@ namespace SesliOkuma
             _miSettings.Text = L.T("Settings");
             _miStop.Text = L.T("Stop");
             _miUpdates.Text = L.T("CheckUpdates");
+            _miAbout.Text = L.T("About") + "…";
             _miExit.Text = L.T("Exit");
         }
 
@@ -206,6 +209,13 @@ namespace SesliOkuma
             if (_settings.Visible) _settings.Hide(); else _settings.ShowNearTray();
         }
 
+        public void ShowAbout()
+        {
+            if (_about != null && !_about.IsDisposed) { _about.Activate(); return; }
+            _about = new AboutForm(AppIcon);
+            _about.ShowNearTray();
+        }
+
         void ShowSettings()
         {
             if (_settings == null || _settings.IsDisposed) _settings = new SettingsForm(this);
@@ -218,6 +228,7 @@ namespace SesliOkuma
         {
             if (m.Msg == WM_HOTKEY) { OnHotkey(); return; }
             if (m.Msg == WM_SHOWSETTINGS) { ToggleSettings(); return; }
+            if (m.Msg == WM_SHOWABOUT) { ShowAbout(); return; }
             base.WndProc(ref m);
         }
 
@@ -314,15 +325,16 @@ namespace SesliOkuma
         }
 
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
+            bool wantAbout = args.Length > 0 && args[0] == "--about";
             bool createdNew;
             using (var mutex = new Mutex(true, @"Local\SesliOkumaHotkey", out createdNew))
             {
                 if (!createdNew)
                 {
                     IntPtr h = FindWindow(null, HostTitle);
-                    if (h != IntPtr.Zero) PostMessage(h, WM_SHOWSETTINGS, IntPtr.Zero, IntPtr.Zero);
+                    if (h != IntPtr.Zero) PostMessage(h, wantAbout ? WM_SHOWABOUT : WM_SHOWSETTINGS, IntPtr.Zero, IntPtr.Zero);
                     return;
                 }
                 Application.EnableVisualStyles();

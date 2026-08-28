@@ -11,6 +11,7 @@ Windows 10/11 için küçük bir sistem tepsisi aracı: **herhangi bir uygulamad
 - **Dile göre ses:** metnin yazısı/dili algılanır; ana dil metinleri ana dil sesiyle, diğerleri ikinci sesle okunur. Çok dilli neural sesler her iki listede de görünür.
 - **Doğal sesler tek tıkla:** panel, açık kaynak [NaturalVoiceSAPIAdapter](https://github.com/gexgd0419/NaturalVoiceSAPIAdapter)'ı kurmayı önerir (Emel, Ahmet ve 15+ İngilizce neural ses; internet gerekir). Windows'un kendi ses paketleri de panelden eklenir.
 - **Otomatik güncelleme:** günde bir kez GitHub Releases'a bakar; yeni sürümü panelde gösterir, SHA-256 doğrulamalı indirir, sessizce kurar ve yeniden açılır (kapatılabilir).
+- **Hakkında & destek:** dil menüsünün altındaki *Hakkında* kartında kaynak kod, sürüm notları, sorun bildirme ve isteğe bağlı **Destek ol ♥** (GitHub Sponsors, tek seferlik bağış) bulunur.
 - Kurulum yönetici yetkisi istemez; **veri toplamaz** — metin yalnızca seçtiğiniz Windows ses sağlayıcısına (SAPI) gider. Ayarlar ve günlük: `%LOCALAPPDATA%\SesliOkuma\`.
 
 ## Kurulum
@@ -55,6 +56,7 @@ MIT — bkz. [LICENSE.txt](LICENSE.txt).
 - **Voice per language** — the text's script/language is detected; primary-language text uses your primary voice, everything else the second voice. Multilingual neural voices appear in both lists.
 - **Natural voices in one click** — the panel offers to install the open-source [NaturalVoiceSAPIAdapter](https://github.com/gexgd0419/NaturalVoiceSAPIAdapter), which adds Microsoft's online neural voices for many languages (internet required). Windows voice packs can be added from the panel too.
 - **Auto-update** — checks GitHub Releases once a day, shows the new version in the panel, downloads with SHA-256 verification, installs silently and restarts (can be turned off).
+- **About & support** — the *About* card (under the language menu) links to source, release notes, issues and an optional **Support ♥** button (GitHub Sponsors, one-time).
 - Per-user install, no admin rights; **no data collection** — text goes only to the Windows speech provider (SAPI) you choose.
 
 Install: download the latest `SesliOkuma-Setup-x.y.z.exe` from [Releases](https://github.com/korayorhun/SesliOkuma/releases). The package is unsigned, so SmartScreen may warn: *More info → Run anyway*. Build from source with `build.ps1` (only the C# compiler shipped with .NET Framework 4.8 is needed). MIT licensed.

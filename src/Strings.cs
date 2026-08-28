@@ -521,7 +521,27 @@ namespace SesliOkuma
                 {"Cancelled", "Cancelado"},
             };
 
+            AddAbout(all);
             return all;
+        }
+
+        static void Put(Dictionary<string, Dictionary<string, string>> all, string lang, string about, string tagline, string source, string notes, string issue, string credits, string support, string supportNote)
+        {
+            var d = all[lang];
+            d["About"] = about; d["Tagline"] = tagline; d["SourceCode"] = source; d["ReleaseNotes2"] = notes; d["ReportIssue"] = issue;
+            d["Credits"] = credits; d["Support"] = support; d["SupportNote"] = supportNote;
+        }
+
+        static void AddAbout(Dictionary<string, Dictionary<string, string>> all)
+        {
+            Put(all, "tr", "Hakkında", "Herhangi bir uygulamada seçtiğiniz metni tek kısayolla sesli okuyan ücretsiz, açık kaynak bir Windows aracı.", "Kaynak kod", "Sürüm notları", "Sorun bildir / öneri", "Doğal sesler için kullanılan proje", "Destek ol", "Tek seferlik, karşılıksız bağış");
+            Put(all, "en", "About", "A free, open-source Windows tool that reads the text you select in any app with a single shortcut.", "Source code", "Release notes", "Report an issue / suggest", "Project used for natural voices", "Support the project", "One-time, no strings attached");
+            Put(all, "zh", "关于", "一款免费开源的 Windows 工具，只需一个快捷键即可朗读任意应用中选中的文字。", "源代码", "更新说明", "报告问题 / 建议", "自然语音所用项目", "支持本项目", "一次性、无附加条件的捐助");
+            Put(all, "hi", "परिचय", "एक मुफ़्त, ओपन-सोर्स Windows टूल जो किसी भी ऐप में चुने गए पाठ को एक शॉर्टकट से पढ़ता है।", "स्रोत कोड", "रिलीज़ नोट्स", "समस्या बताएँ / सुझाव", "प्राकृतिक आवाज़ों के लिए प्रयुक्त प्रोजेक्ट", "प्रोजेक्ट का समर्थन करें", "एक बार, बिना किसी शर्त");
+            Put(all, "es", "Acerca de", "Una herramienta gratuita y de código abierto para Windows que lee el texto seleccionado en cualquier aplicación con un solo atajo.", "Código fuente", "Notas de la versión", "Informar un problema / sugerir", "Proyecto usado para las voces naturales", "Apoyar el proyecto", "Donación única, sin compromisos");
+            Put(all, "fr", "À propos", "Un outil Windows gratuit et open source qui lit le texte sélectionné dans n'importe quelle application avec un seul raccourci.", "Code source", "Notes de version", "Signaler un problème / suggérer", "Projet utilisé pour les voix naturelles", "Soutenir le projet", "Don unique, sans contrepartie");
+            Put(all, "ar", "حول", "أداة Windows مجانية ومفتوحة المصدر تقرأ النص الذي تحدده في أي تطبيق باختصار واحد.", "الشيفرة المصدرية", "ملاحظات الإصدار", "الإبلاغ عن مشكلة / اقتراح", "المشروع المستخدم للأصوات الطبيعية", "ادعم المشروع", "تبرع لمرة واحدة دون شروط");
+            Put(all, "pt", "Sobre", "Uma ferramenta gratuita e de código aberto para Windows que lê o texto selecionado em qualquer aplicativo com um único atalho.", "Código-fonte", "Notas da versão", "Relatar um problema / sugerir", "Projeto usado para as vozes naturais", "Apoiar o projeto", "Doação única, sem compromissos");
         }
     }
 }

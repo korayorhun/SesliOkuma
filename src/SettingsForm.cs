@@ -226,6 +226,10 @@ namespace SesliOkuma
                 item.Click += delegate { _app.ApplyLanguage((string)item.Tag); };
                 menu.Items.Add(item);
             }
+            menu.Items.Add(new ToolStripSeparator());
+            var about = new ToolStripMenuItem(L.T("About") + "…");
+            about.Click += delegate { Hide(); _app.ShowAbout(); };
+            menu.Items.Add(about);
             menu.Opened += delegate { _langMenuOpen = true; };
             menu.Closed += delegate { _langMenuOpen = false; };
             menu.Show(anchor, new Point(anchor.Width - 160, anchor.Height + 4));
