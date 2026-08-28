@@ -25,6 +25,11 @@ namespace SesliOkuma
         readonly ToggleSwitch _startup = new ToggleSwitch();
         readonly ToggleSwitch _autoUpdate = new ToggleSwitch();
         readonly ToggleSwitch _readerBar = new ToggleSwitch();
+        readonly CaptionLink _advanced = new CaptionLink();
+        readonly Panel _adv = new Panel();
+        readonly HotkeyBox _trHotkey = new HotkeyBox();
+        readonly TextBox _key = new TextBox();
+        int _advH, _advBottomOffset;
         readonly Label _rateValue = new Label();
         readonly Label _status = new Label();
         readonly Label _version = new Label();
@@ -162,6 +167,33 @@ namespace SesliOkuma
             _body.Controls.Add(_readerBar);
             y += 40;
 
+            // ---- advanced (collapsed by default): translate shortcut + DeepL key
+            _advanced.Caption = L.T("Advanced").ToUpperInvariant(); _advanced.ChevronOnly = true;
+            _trHotkey.HintKey = "HotkeyHintSimple";
+            _advanced.SetBounds(Pad, y, W - 2 * Pad, 18); _advanced.Cursor = Cursors.Hand;
+            _advanced.Click += delegate { _app.Settings.AdvancedOpen = !_app.Settings.AdvancedOpen; _app.Settings.Save(); Relayout(); };
+            _body.Controls.Add(_advanced);
+            y += 26;
+            _adv.BackColor = Theme.Bg; _adv.Location = new Point(0, y); _adv.Width = W;
+            int ay = 0;
+            _adv.Controls.Add(MakeLabel(L.T("TranslateHotkey"), Theme.Caption, Theme.Muted, Pad, ay, W - 2 * Pad, 16)); ay += 22;
+            _trHotkey.SetBounds(Pad, ay, W - 2 * Pad, 48);
+            _trHotkey.HotkeyChosen += delegate (HotkeyDef def) { if (_app.ApplyTranslateHotkey(def)) { _trHotkey.Value = def; Flash(L.F("HotkeySaved", def.ToString())); } else { _trHotkey.Value = _app.TranslateHotkey; Flash(L.F("HotkeyTaken", def.ToString())); } };
+            _trHotkey.NeedModifier += delegate { Flash(L.T("HotkeyNeedMod")); };
+            _adv.Controls.Add(_trHotkey); ay += 48 + 22;
+            _adv.Controls.Add(MakeLabel(L.T("DeepLKey"), Theme.Caption, Theme.Muted, Pad, ay, 200, 16));
+            var get = MakeLabel(L.T("GetKey"), Theme.Caption, Theme.Accent, W - Pad - 160, ay, 160, 16); get.TextAlign = ContentAlignment.TopRight; get.Cursor = Cursors.Hand;
+            get.Click += delegate { OpenUrl("https://www.deepl.com/pro-api"); };
+            _adv.Controls.Add(get); ay += 22;
+            var keyBox = new Panel { BackColor = Theme.Card, Location = new Point(Pad, ay), Size = new Size(W - 2 * Pad, 40) };
+            _key.BorderStyle = BorderStyle.None; _key.BackColor = Theme.Card; _key.ForeColor = Theme.Text; _key.Font = Theme.Body; _key.UseSystemPasswordChar = true;
+            _key.SetBounds(12, 10, keyBox.Width - 24, 22);
+            _key.Leave += delegate { SaveKey(); }; _key.KeyDown += delegate (object s2, KeyEventArgs e2) { if (e2.KeyCode == Keys.Enter) { e2.SuppressKeyPress = true; SaveKey(); _body.Focus(); } };
+            keyBox.Controls.Add(_key); _adv.Controls.Add(keyBox); ay += 40 + 8;
+            _adv.Height = ay; _advH = ay;
+            _body.Controls.Add(_adv);
+            y += _advH;
+
             _status.Font = Theme.Small; _status.ForeColor = Theme.Muted; _status.BackColor = Color.Transparent;
             _status.SetBounds(Pad, y, W - 2 * Pad - 116, 18);
             _status.Click += delegate { if (_hint.Length > 0 && _status.Text == _hint) { if (WindowsVoicePack.CultureFor(_app.Settings.PrimaryLang) != null) InstallWindowsVoice(); else NaturalVoicesInstaller.OpenWindowsVoiceSettings(); } };
@@ -171,8 +203,10 @@ namespace SesliOkuma
             _version.Text = "v" + Updater.CurrentVersionText + "  ·  " + L.T("Check");
             _version.Click += delegate { Flash(L.T("Checking")); _app.Updater.CheckAsync(true); };
             _body.Controls.Add(_version);
+            _statusOffset = _status.Top - (_adv.Top + _advH);
             y += 30;
             _bodyH = y;
+            _advBottomOffset = _bodyH - (_adv.Top + _advH);
 
             _statusTimer.Interval = 2800;
             _statusTimer.Tick += delegate { _statusTimer.Stop(); ShowHint(); };
@@ -216,10 +250,23 @@ namespace SesliOkuma
             _updateCard.Visible = showUpdate;
             if (showNatural) { _naturalCard.SetBounds(Pad, y, W - 2 * Pad, CardH); y += CardH + CardGap; }
             _naturalCard.Visible = showNatural;
+            bool open = _app.Settings.AdvancedOpen;
+            _adv.Visible = open;
+            int advH = open ? _advH : 0;
+            _advanced.Open = open; _advanced.Invalidate();
+            _status.Top = _adv.Top + advH + _statusOffset; _version.Top = _status.Top;
             _body.Top = y;
-            _body.Height = _bodyH;
+            _body.Height = _bodyH - (_advH - advH);
             ClientSize = new Size(W, _body.Bottom);
             if (Visible) PlaceNearTray();
+        }
+
+        int _statusOffset;
+        void SaveKey()
+        {
+            string k = _key.Text.Trim();
+            if (k == _app.Settings.DeepLKey) return;
+            _app.Settings.DeepLKey = k; _app.Settings.Save(); Flash(L.T("KeySaved"));
         }
 
         void UpdateSubtitle() { _subtitle.Text = L.F("Subtitle", _app.Hotkey.ToString()); }
@@ -353,6 +400,8 @@ namespace SesliOkuma
             _startup.Checked = StartupShortcut.IsEnabled;
             _autoUpdate.Checked = _app.Settings.AutoUpdate;
             _readerBar.Checked = _app.Settings.ShowReaderBar;
+            _trHotkey.Value = _app.TranslateHotkey;
+            _key.Text = _app.Settings.DeepLKey;
             _loading = false;
             ShowHint();
             Relayout();
@@ -399,7 +448,7 @@ namespace SesliOkuma
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == Keys.Escape && !_hotkey.Focused) { Hide(); return true; }
+            if (keyData == Keys.Escape && !_hotkey.Focused && !_trHotkey.Focused && !_key.Focused) { Hide(); return true; }
             return base.ProcessCmdKey(ref msg, keyData);
         }
     }

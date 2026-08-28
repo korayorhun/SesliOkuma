@@ -88,6 +88,7 @@ namespace SesliOkuma
         public event Action<HotkeyDef> HotkeyChosen;
         public event EventHandler NeedModifier;
 
+        public string HintKey = "HotkeyHint";
         public HotkeyBox() { Height = 48; SetStyle(ControlStyles.Selectable, true); TabStop = true; }
 
         public HotkeyDef Value { get { return _value; } set { _value = value; Invalidate(); } }
@@ -134,7 +135,7 @@ namespace SesliOkuma
                 using (var pen = new Pen(_capturing || Hover ? Theme.Accent : Theme.Border)) e.Graphics.DrawPath(pen, p);
             }
             string main = _capturing ? L.T("HotkeyCapture") : _value.ToString();
-            string sub = _capturing ? "" : L.T("HotkeyHint");
+            string sub = _capturing ? "" : L.T(HintKey);
             var flags = TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis;
             if (_capturing)
                 TextRenderer.DrawText(e.Graphics, main, Theme.Body, new Rectangle(14, 0, Width - 28, Height), Theme.Accent, flags | TextFormatFlags.VerticalCenter);

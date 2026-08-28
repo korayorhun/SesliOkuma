@@ -545,6 +545,8 @@ namespace SesliOkuma
             AddWindowsVoice(all);
             AddReaderBar(all);
             AddSave(all);
+            AddTranslate(all);
+            AddHintSimple(all);
         }
 
         static void Put2(Dictionary<string, Dictionary<string, string>> all, string lang, string install, string installing, string done, string failed, string noVoice, string settings)
@@ -563,6 +565,118 @@ namespace SesliOkuma
             all["hi"]["SaveAudio"] = "चयन को ऑडियो फ़ाइल के रूप में सहेजें"; all["hi"]["NoTextToSave"] = "सहेजने के लिए पाठ नहीं (पहले पाठ चुनें)"; all["hi"]["SavedTo"] = "ऑडियो फ़ाइल सहेजी गई: {0}"; all["hi"]["SaveFailed"] = "सहेजा नहीं जा सका: {0}";
             all["pt"]["SaveAudio"] = "Salvar seleção como arquivo de áudio"; all["pt"]["NoTextToSave"] = "Nenhum texto para salvar (selecione um texto primeiro)"; all["pt"]["SavedTo"] = "Arquivo de áudio salvo: {0}"; all["pt"]["SaveFailed"] = "Não foi possível salvar: {0}";
             all["fr"]["SaveAudio"] = "Enregistrer la sélection en fichier audio"; all["fr"]["NoTextToSave"] = "Aucun texte à enregistrer (sélectionnez du texte)"; all["fr"]["SavedTo"] = "Fichier audio enregistré : {0}"; all["fr"]["SaveFailed"] = "Enregistrement impossible : {0}";
+        }
+
+        static void AddTranslate(Dictionary<string, Dictionary<string, string>> all)
+        {
+            all["es"]["Advanced"] = "Avanzado";
+            all["es"]["TranslateHotkey"] = "ATAJO TRADUCIR Y LEER";
+            all["es"]["DeepLKey"] = "CLAVE API DE DEEPL (GRATIS)";
+            all["es"]["GetKey"] = "Obtener clave gratis →";
+            all["es"]["TranslateNeedsKey"] = "La traducción necesita una clave DeepL — abre Avanzado en el panel";
+            all["es"]["Translating"] = "Traduciendo…";
+            all["es"]["TranslateFailed"] = "Error de traducción: {0}";
+            all["es"]["TranslateBadKey"] = "Clave DeepL no válida";
+            all["es"]["TranslateQuota"] = "Cuota mensual de DeepL agotada";
+            all["es"]["TranslateUnsupported"] = "DeepL no admite {0}";
+            all["es"]["TranslateRead"] = "Traducir y leer";
+            all["es"]["KeySaved"] = "Clave guardada";
+            all["ar"]["Advanced"] = "متقدم";
+            all["ar"]["TranslateHotkey"] = "اختصار الترجمة والقراءة";
+            all["ar"]["DeepLKey"] = "مفتاح DEEPL API (مجاني)";
+            all["ar"]["GetKey"] = "احصل على مفتاح مجاني →";
+            all["ar"]["TranslateNeedsKey"] = "الترجمة تحتاج مفتاح DeepL — افتح «متقدم» في اللوحة";
+            all["ar"]["Translating"] = "جارٍ الترجمة…";
+            all["ar"]["TranslateFailed"] = "فشلت الترجمة: {0}";
+            all["ar"]["TranslateBadKey"] = "مفتاح DeepL غير صالح";
+            all["ar"]["TranslateQuota"] = "انتهت حصة DeepL الشهرية";
+            all["ar"]["TranslateUnsupported"] = "DeepL لا يدعم {0}";
+            all["ar"]["TranslateRead"] = "ترجمة وقراءة";
+            all["ar"]["KeySaved"] = "تم حفظ المفتاح";
+            all["zh"]["Advanced"] = "高级";
+            all["zh"]["TranslateHotkey"] = "翻译并朗读快捷键";
+            all["zh"]["DeepLKey"] = "DEEPL API 密钥（免费）";
+            all["zh"]["GetKey"] = "获取免费密钥 →";
+            all["zh"]["TranslateNeedsKey"] = "翻译需要 DeepL 密钥 — 请在面板中打开“高级”";
+            all["zh"]["Translating"] = "正在翻译…";
+            all["zh"]["TranslateFailed"] = "翻译失败：{0}";
+            all["zh"]["TranslateBadKey"] = "DeepL 密钥无效";
+            all["zh"]["TranslateQuota"] = "DeepL 月度配额已用完";
+            all["zh"]["TranslateUnsupported"] = "DeepL 不支持 {0}";
+            all["zh"]["TranslateRead"] = "翻译并朗读";
+            all["zh"]["KeySaved"] = "密钥已保存";
+            all["en"]["Advanced"] = "Advanced";
+            all["en"]["TranslateHotkey"] = "TRANSLATE & READ SHORTCUT";
+            all["en"]["DeepLKey"] = "DEEPL API KEY (FREE)";
+            all["en"]["GetKey"] = "Get a free key →";
+            all["en"]["TranslateNeedsKey"] = "Translation needs a DeepL key — open Advanced in the panel";
+            all["en"]["Translating"] = "Translating…";
+            all["en"]["TranslateFailed"] = "Translation failed: {0}";
+            all["en"]["TranslateBadKey"] = "Invalid DeepL key";
+            all["en"]["TranslateQuota"] = "DeepL monthly quota exhausted";
+            all["en"]["TranslateUnsupported"] = "DeepL does not support {0}";
+            all["en"]["TranslateRead"] = "Translate & read";
+            all["en"]["KeySaved"] = "Key saved";
+            all["fr"]["Advanced"] = "Avancé";
+            all["fr"]["TranslateHotkey"] = "RACCOURCI TRADUIRE ET LIRE";
+            all["fr"]["DeepLKey"] = "CLÉ API DEEPL (GRATUITE)";
+            all["fr"]["GetKey"] = "Obtenir une clé gratuite →";
+            all["fr"]["TranslateNeedsKey"] = "La traduction nécessite une clé DeepL — ouvrez Avancé dans le panneau";
+            all["fr"]["Translating"] = "Traduction…";
+            all["fr"]["TranslateFailed"] = "Échec de la traduction : {0}";
+            all["fr"]["TranslateBadKey"] = "Clé DeepL invalide";
+            all["fr"]["TranslateQuota"] = "Quota mensuel DeepL épuisé";
+            all["fr"]["TranslateUnsupported"] = "DeepL ne prend pas en charge {0}";
+            all["fr"]["TranslateRead"] = "Traduire et lire";
+            all["fr"]["KeySaved"] = "Clé enregistrée";
+            all["hi"]["Advanced"] = "उन्नत";
+            all["hi"]["TranslateHotkey"] = "अनुवाद करें और पढ़ें शॉर्टकट";
+            all["hi"]["DeepLKey"] = "DEEPL API कुंजी (मुफ़्त)";
+            all["hi"]["GetKey"] = "मुफ़्त कुंजी प्राप्त करें →";
+            all["hi"]["TranslateNeedsKey"] = "अनुवाद के लिए DeepL कुंजी चाहिए — पैनल में उन्नत खोलें";
+            all["hi"]["Translating"] = "अनुवाद हो रहा है…";
+            all["hi"]["TranslateFailed"] = "अनुवाद विफल: {0}";
+            all["hi"]["TranslateBadKey"] = "DeepL कुंजी अमान्य";
+            all["hi"]["TranslateQuota"] = "DeepL मासिक कोटा समाप्त";
+            all["hi"]["TranslateUnsupported"] = "DeepL {0} का समर्थन नहीं करता";
+            all["hi"]["TranslateRead"] = "अनुवाद करें और पढ़ें";
+            all["hi"]["KeySaved"] = "कुंजी सहेजी गई";
+            all["tr"]["Advanced"] = "Gelişmiş";
+            all["tr"]["TranslateHotkey"] = "ÇEVİR VE OKU KISAYOLU";
+            all["tr"]["DeepLKey"] = "DEEPL API ANAHTARI (ÜCRETSİZ)";
+            all["tr"]["GetKey"] = "Ücretsiz anahtar al →";
+            all["tr"]["TranslateNeedsKey"] = "Çeviri için DeepL anahtarı gerekir — panelde Gelişmiş bölümüne girin";
+            all["tr"]["Translating"] = "Çevriliyor…";
+            all["tr"]["TranslateFailed"] = "Çeviri başarısız: {0}";
+            all["tr"]["TranslateBadKey"] = "DeepL anahtarı geçersiz";
+            all["tr"]["TranslateQuota"] = "DeepL aylık kotası doldu";
+            all["tr"]["TranslateUnsupported"] = "DeepL {0} dilini desteklemiyor";
+            all["tr"]["TranslateRead"] = "Çevir ve oku";
+            all["tr"]["KeySaved"] = "Anahtar kaydedildi";
+            all["pt"]["Advanced"] = "Avançado";
+            all["pt"]["TranslateHotkey"] = "ATALHO TRADUZIR E LER";
+            all["pt"]["DeepLKey"] = "CHAVE DA API DEEPL (GRÁTIS)";
+            all["pt"]["GetKey"] = "Obter chave grátis →";
+            all["pt"]["TranslateNeedsKey"] = "A tradução precisa de uma chave DeepL — abra Avançado no painel";
+            all["pt"]["Translating"] = "Traduzindo…";
+            all["pt"]["TranslateFailed"] = "Falha na tradução: {0}";
+            all["pt"]["TranslateBadKey"] = "Chave DeepL inválida";
+            all["pt"]["TranslateQuota"] = "Cota mensal do DeepL esgotada";
+            all["pt"]["TranslateUnsupported"] = "O DeepL não suporta {0}";
+            all["pt"]["TranslateRead"] = "Traduzir e ler";
+            all["pt"]["KeySaved"] = "Chave salva";
+        }
+
+        static void AddHintSimple(Dictionary<string, Dictionary<string, string>> all)
+        {
+            all["es"]["HotkeyHintSimple"] = "Clic: cambiar";
+            all["ar"]["HotkeyHintSimple"] = "انقر: تغيير";
+            all["tr"]["HotkeyHintSimple"] = "Tıkla: değiştir";
+            all["pt"]["HotkeyHintSimple"] = "Clique: alterar";
+            all["en"]["HotkeyHintSimple"] = "Click: change";
+            all["fr"]["HotkeyHintSimple"] = "Clic : modifier";
+            all["hi"]["HotkeyHintSimple"] = "क्लिक: बदलें";
+            all["zh"]["HotkeyHintSimple"] = "点击：更改";
         }
 
         static void AddReaderBar(Dictionary<string, Dictionary<string, string>> all)

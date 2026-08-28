@@ -107,14 +107,23 @@ namespace SesliOkuma
     {
         public string Caption = "";
         public string Value = "";
+        public bool ChevronOnly;          // caption + chevron, no value (collapsible section header)
+        public bool Open;
         public CaptionLink() { Height = 18; Cursor = Cursors.Default; }
-        protected override void OnMouseEnter(EventArgs e) { Cursor = Value.Length > 0 ? Cursors.Hand : Cursors.Default; base.OnMouseEnter(e); }
+        protected override void OnMouseEnter(EventArgs e) { Cursor = Value.Length > 0 || ChevronOnly ? Cursors.Hand : Cursors.Default; base.OnMouseEnter(e); }
         protected override void OnPaint(PaintEventArgs e)
         {
             Theme.Prepare(e.Graphics);
             var f = TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.VerticalCenter;
             int x = 0;
-            TextRenderer.DrawText(e.Graphics, Caption, Theme.Caption, new Rectangle(x, 0, Width, Height), Theme.Muted, f);
+            TextRenderer.DrawText(e.Graphics, Caption, Theme.Caption, new Rectangle(x, 0, Width, Height), Hover && ChevronOnly ? Theme.Text : Theme.Muted, f);
+            if (ChevronOnly)
+            {
+                x += TextRenderer.MeasureText(e.Graphics, Caption, Theme.Caption, new Size(1000, Height), f).Width + 6;
+                using (var small = new Font(Theme.Icon.FontFamily, 7f))
+                    TextRenderer.DrawText(e.Graphics, Open ? "\uE70E" : "\uE70D", small, new Rectangle(x, 1, 14, Height), Hover ? Theme.Text : Theme.Muted, f);
+                return;
+            }
             if (Value.Length == 0) return;
             x += TextRenderer.MeasureText(e.Graphics, Caption, Theme.Caption, new Size(1000, Height), f).Width;
             string sep = "  ·  ";

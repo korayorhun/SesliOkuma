@@ -34,6 +34,10 @@ namespace SesliOkuma
         public NaturalVoicesInstaller NaturalInstaller;
         HotkeyDef _hotkey = HotkeyDef.Default;
         public HotkeyDef Hotkey { get { return _hotkey; } }
+        HotkeyDef _trHotkey;
+        public HotkeyDef TranslateHotkey { get { return _trHotkey; } }
+        bool _trRegistered;
+        TranslationCard _card;
         public Icon AppIcon;
         public event Action LanguageChanged;
 
@@ -41,7 +45,7 @@ namespace SesliOkuma
         readonly NotifyIcon _tray = new NotifyIcon();
         readonly System.Windows.Forms.Timer _pulse = new System.Windows.Forms.Timer();
         readonly System.Windows.Forms.Timer _updateTimer = new System.Windows.Forms.Timer();
-        ToolStripMenuItem _miSettings, _miStop, _miSave, _miUpdates, _miAbout, _miExit;
+        ToolStripMenuItem _miSettings, _miStop, _miSave, _miTranslate, _miUpdates, _miAbout, _miExit;
         AboutForm _about;
         SettingsForm _settings;
         bool _busy, _wasSpeaking, _hotkeyRegistered;
@@ -73,9 +77,10 @@ namespace SesliOkuma
             _miStop = new ToolStripMenuItem(); _miStop.Click += delegate { Engine.Stop(); };
             _miUpdates = new ToolStripMenuItem(); _miUpdates.Click += delegate { Updater.CheckAsync(true); ShowSettings(); };
             _miSave = new ToolStripMenuItem(); _miSave.Click += delegate { SaveSelectionToWav(); };
+            _miTranslate = new ToolStripMenuItem(); _miTranslate.Click += delegate { TranslateSelection(); };
             _miAbout = new ToolStripMenuItem(); _miAbout.Click += delegate { ShowAbout(); };
             _miExit = new ToolStripMenuItem(); _miExit.Click += delegate { Close(); };
-            menu.Items.AddRange(new ToolStripItem[] { _miSettings, _miStop, _miSave, new ToolStripSeparator(), _miUpdates, _miAbout, new ToolStripSeparator(), _miExit });
+            menu.Items.AddRange(new ToolStripItem[] { _miSettings, _miStop, _miTranslate, _miSave, new ToolStripSeparator(), _miUpdates, _miAbout, new ToolStripSeparator(), _miExit });
             _tray.ContextMenuStrip = menu;
             ApplyTexts();
 
@@ -101,6 +106,8 @@ namespace SesliOkuma
             if (!ApplyHotkey(def) && !def.Equals(HotkeyDef.Default)) ApplyHotkey(HotkeyDef.Default);
             if (!_hotkeyRegistered)
                 _tray.ShowBalloonTip(6000, "Sesli Okuma", L.F("HotkeyFailBalloon", Hotkey.ToString()), ToolTipIcon.Warning);
+            HotkeyDef trDef;
+            if (HotkeyDef.TryParse(Settings.TranslateHotkey, out trDef)) ApplyTranslateHotkey(trDef);
 
             Updater = new Updater(this);
             Updater.UpdateFound += delegate (UpdateInfo u)
@@ -129,6 +136,7 @@ namespace SesliOkuma
             _miStop.Text = L.T("Stop");
             _miUpdates.Text = L.T("CheckUpdates");
             _miSave.Text = L.T("SaveAudio") + "…";
+            _miTranslate.Text = L.T("TranslateRead");
             _miAbout.Text = L.T("About") + "…";
             _miExit.Text = L.T("Exit");
         }
@@ -247,6 +255,51 @@ namespace SesliOkuma
             return false;
         }
 
+        public bool ApplyTranslateHotkey(HotkeyDef def)
+        {
+            if (_trRegistered) { UnregisterHotKey(Handle, 2); _trRegistered = false; }
+            if (def.IsValid && RegisterHotKey(Handle, 2, def.Modifiers | MOD_NOREPEAT, (uint)def.Key))
+            {
+                _trRegistered = true; _trHotkey = def; Settings.TranslateHotkey = def.ToString(); Settings.Save();
+                Logger.Log("translate hotkey registered: " + def);
+                return true;
+            }
+            if (_trHotkey.IsValid && RegisterHotKey(Handle, 2, _trHotkey.Modifiers | MOD_NOREPEAT, (uint)_trHotkey.Key)) _trRegistered = true;
+            return false;
+        }
+
+        public void TranslateSelection()
+        {
+            try { TranslateSelectionCore(); }
+            catch (Exception ex) { Logger.Log("translate error: " + ex); }
+        }
+
+        void TranslateSelectionCore()
+        {
+            Logger.Log("translate requested");
+            if (Settings.DeepLKey.Trim().Length == 0)
+            {
+                _tray.ShowBalloonTip(6000, L.T("TranslateRead"), L.T("TranslateNeedsKey"), ToolTipIcon.Info);
+                Settings.AdvancedOpen = true; Settings.Save(); ShowSettings();
+                return;
+            }
+            string text = GrabText();
+            if (text == null) { _tray.ShowBalloonTip(4000, L.T("TranslateRead"), L.T("NoTextToSave"), ToolTipIcon.Warning); return; }
+            Reader.Stop(false);
+            if (_card == null || _card.IsDisposed) { _card = new TranslationCard(AppIcon); _card.PlayClicked += delegate { var v2 = Engine.BestFor(Settings.PrimaryLang) ?? PrimaryVoice; Reader.Start(_card.Translation, v2); }; }
+            string targetName = L.NativeName(Settings.PrimaryLang) == Settings.PrimaryLang ? Settings.PrimaryLang.ToUpperInvariant() : L.NativeName(Settings.PrimaryLang);
+            _card.SetContent("", targetName, text, "", true); _card.Show();
+            Translator.TranslateAsync(this, Settings.DeepLKey, text, Settings.PrimaryLang,
+                delegate (string translated, string detected)
+                {
+                    if (_card == null || _card.IsDisposed) return;
+                    _card.SetContent(detected, targetName, text, translated, false);
+                    var v = Engine.BestFor(Settings.PrimaryLang) ?? PrimaryVoice;
+                    Reader.Start(translated, v);
+                },
+                delegate (string err) { if (_card != null && !_card.IsDisposed) _card.Close(); _tray.ShowBalloonTip(6000, L.T("TranslateRead"), L.F("TranslateFailed", err), ToolTipIcon.Warning); });
+        }
+
         public void ApplyLanguage(string code)
         {
             L.Lang = code;
@@ -285,7 +338,7 @@ namespace SesliOkuma
 
         protected override void WndProc(ref Message m)
         {
-            if (m.Msg == WM_HOTKEY) { OnHotkey(); return; }
+            if (m.Msg == WM_HOTKEY) { if (m.WParam.ToInt32() == 2) TranslateSelection(); else OnHotkey(); return; }
             if (m.Msg == WM_SHOWSETTINGS) { ToggleSettings(); return; }
             if (m.Msg == WM_SHOWABOUT) { ShowAbout(); return; }
             base.WndProc(ref m);
@@ -403,11 +456,13 @@ namespace SesliOkuma
 
         string GrabText()
         {
-            string text = GetSelectionViaUia();
-            if (text == null) text = GetSelectionViaCopy();
-            if (text == null) text = GetParagraphUnderMouse();
-            if (text == null) text = GetClipboardText();
-            return (text != null && text.Trim().Length > 0) ? text : null;
+            string src = "uia"; string text = GetSelectionViaUia();
+            if (text == null) { src = "copy"; text = GetSelectionViaCopy(); }
+            if (text == null) { src = "pointer"; text = GetParagraphUnderMouse(); }
+            if (text == null) { src = "clipboard"; text = GetClipboardText(); }
+            bool ok = text != null && text.Trim().Length > 0;
+            Logger.Log("grab " + (ok ? src + " len=" + text.Length : "none") + " app=" + ForegroundApp());
+            return ok ? text : null;
         }
 
         public void SaveSelectionToWav()
@@ -445,6 +500,7 @@ namespace SesliOkuma
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             if (_hotkeyRegistered) UnregisterHotKey(Handle, 1);
+            if (_trRegistered) UnregisterHotKey(Handle, 2);
             _pulse.Stop();
             _gesture.Stop();
             _updateTimer.Stop();

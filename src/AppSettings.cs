@@ -12,6 +12,9 @@ namespace SesliOkuma
         public string PrimaryLang = "";       // two-letter language whose texts use the primary voice
         public string Language = "";          // UI language; empty = follow system
         public string Hotkey = "Ctrl+Alt+S";
+        public string TranslateHotkey = "Ctrl+Alt+T";
+        public string DeepLKey = "";
+        public bool AdvancedOpen = false;
         public int Rate = 0;
         public bool AutoUpdate = true;
         public bool ShowReaderBar = true;
@@ -50,6 +53,9 @@ namespace SesliOkuma
                         case "PrimaryLang": s.PrimaryLang = val; break;
                         case "Language": s.Language = val; break;
                         case "Hotkey": s.Hotkey = val; break;
+                        case "TranslateHotkey": s.TranslateHotkey = val; break;
+                        case "DeepLKey": s.DeepLKey = val; break;
+                        case "AdvancedOpen": s.AdvancedOpen = val == "1"; break;
                         case "Rate": { int r; if (int.TryParse(val, out r)) s.Rate = r; break; }
                         case "AutoUpdate": s.AutoUpdate = val != "0"; break;
                         case "ShowReaderBar": s.ShowReaderBar = val != "0"; break;
@@ -68,7 +74,7 @@ namespace SesliOkuma
             {
                 File.WriteAllLines(FilePath, new[] {
                     "PrimaryVoice=" + PrimaryVoiceId, "OtherVoice=" + OtherVoiceId, "PrimaryLang=" + PrimaryLang,
-                    "Language=" + Language, "Hotkey=" + Hotkey, "Rate=" + Rate,
+                    "Language=" + Language, "Hotkey=" + Hotkey, "TranslateHotkey=" + TranslateHotkey, "DeepLKey=" + DeepLKey, "AdvancedOpen=" + (AdvancedOpen ? "1" : "0"), "Rate=" + Rate,
                     "AutoUpdate=" + (AutoUpdate ? "1" : "0"), "ShowReaderBar=" + (ShowReaderBar ? "1" : "0"), "SkipVersion=" + SkipVersion, "LastUpdateCheck=" + LastUpdateCheck.ToString("o") });
             }
             catch (Exception ex) { Logger.Log("settings save: " + ex.Message); }
