@@ -1,0 +1,15 @@
+# build output
+/SesliOkuma.exe
+/dist/
+*.pdb
+
+# per-machine / personal
+settings.ini
+*.log
+KURULUM-PROMPT.md
+/installer/*.log
+
+# editors
+.vs/
+*.user
+Thumbs.db
