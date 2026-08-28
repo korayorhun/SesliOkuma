@@ -18,6 +18,7 @@ namespace SesliOkuma
         [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string cls, string title);
         [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+        [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vk);
 
         const int WM_HOTKEY = 0x0312, WM_SHOWSETTINGS = 0x8000 + 41, WM_SHOWABOUT = 0x8000 + 42;
         const string HostTitle = "SesliOkumaHost";
@@ -42,6 +43,11 @@ namespace SesliOkuma
         AboutForm _about;
         SettingsForm _settings;
         bool _busy, _wasSpeaking, _hotkeyRegistered;
+        public Reader Reader;
+        ReaderBar _bar;
+        readonly System.Windows.Forms.Timer _gesture = new System.Windows.Forms.Timer();
+        DateTime _lastPress = DateTime.MinValue, _pressStart;
+        bool _holdCandidate;
 
         public TrayApp()
         {
@@ -69,10 +75,17 @@ namespace SesliOkuma
             _tray.ContextMenuStrip = menu;
             ApplyTexts();
 
-            _pulse.Interval = 250;
+            Reader = new Reader(Engine, delegate { return Settings.Rate; });
+            Reader.Changed += SyncBar;
+            Reader.Finished += SyncBar;
+            _gesture.Interval = 40;
+            _gesture.Tick += GestureTick;
+
+            _pulse.Interval = 150;
             _pulse.Tick += delegate
             {
-                bool speaking = Engine.IsSpeaking;
+                Reader.Tick();
+                bool speaking = Engine.IsSpeaking || Reader.Active;
                 if (speaking == _wasSpeaking) return;
                 _wasSpeaking = speaking;
                 _tray.Icon = speaking ? _speakingIcon : _idleIcon;
@@ -165,8 +178,49 @@ namespace SesliOkuma
 
         public void Speak(string text, VoiceInfo voice)
         {
+            Reader.Stop(false);
             try { Engine.Speak(text, voice, Settings.Rate); }
             catch (Exception ex) { Logger.Log("speak failed: " + ex.Message); }
+        }
+
+        void SyncBar()
+        {
+            bool show = Reader.Active && Settings.ShowReaderBar;
+            if (show)
+            {
+                if (_bar == null || _bar.IsDisposed)
+                    _bar = new ReaderBar(Reader, delegate { return Settings.Rate; }, delegate (int d) { Settings.Rate = Math.Max(-10, Math.Min(10, Settings.Rate + 2 * d)); Settings.Save(); });
+                if (!_bar.Visible) { _bar.Place(); _bar.Show(); }
+            }
+            else if (_bar != null && !_bar.IsDisposed && _bar.Visible) _bar.Hide();
+        }
+
+        // Paragraph under the mouse pointer (used when nothing is selected).
+        static string GetParagraphUnderMouse()
+        {
+            try
+            {
+                var pt = Cursor.Position;
+                AutomationElement el = AutomationElement.FromPoint(new System.Windows.Point(pt.X, pt.Y));
+                if (el == null) return null;
+                object pat;
+                if (!el.TryGetCurrentPattern(TextPattern.Pattern, out pat)) return null;
+                var tp = (TextPattern)pat;
+                TextPatternRange range = tp.RangeFromPoint(new System.Windows.Point(pt.X, pt.Y));
+                if (range == null) return null;
+                range.ExpandToEnclosingUnit(TextUnit.Paragraph);
+                string s = range.GetText(-1);
+                return (s != null && s.Trim().Length > 0) ? s : null;
+            }
+            catch (Exception ex) { Logger.Log("UIA point: " + ex.Message); return null; }
+        }
+
+        void GestureTick(object sender, EventArgs e)
+        {
+            if (!_holdCandidate) { _gesture.Stop(); return; }
+            bool down = (GetAsyncKeyState((int)Hotkey.Key) & 0x8000) != 0;
+            if (!down) { _holdCandidate = false; _gesture.Stop(); Reader.Stop(false); Logger.Log("stopped"); return; }
+            if ((DateTime.UtcNow - _pressStart).TotalMilliseconds >= 600) { _holdCandidate = false; _gesture.Stop(); Reader.TogglePause(); Logger.Log(Reader.Paused ? "paused" : "resumed"); }
         }
 
         public bool ApplyHotkey(HotkeyDef def)
@@ -291,34 +345,62 @@ namespace SesliOkuma
 
         void OnHotkey()
         {
+            var now = DateTime.UtcNow;
+            if (_lastPress != DateTime.MinValue && (now - _lastPress).TotalMilliseconds < 450)
+            {
+                // double press: read the clipboard
+                _lastPress = DateTime.MinValue; _holdCandidate = false; _gesture.Stop();
+                Reader.Stop(false);
+                string clip = GetClipboardText();
+                if (clip == null || clip.Trim().Length == 0) { Logger.Log("double press: clipboard empty"); return; }
+                Read(clip, "clipboard(2x)");
+                return;
+            }
+            _lastPress = now;
+            if (Reader.Active)
+            {
+                // quick release = stop, hold = pause/resume (decided by GestureTick)
+                _pressStart = now; _holdCandidate = true; _gesture.Start();
+                return;
+            }
+            if (Engine.IsSpeaking) { Engine.Stop(); Logger.Log("stopped"); return; }
+            ReadSelection();
+        }
+
+        void ReadSelection()
+        {
             if (_busy) return;
             _busy = true;
             try
             {
-                if (Engine.IsSpeaking) { Engine.Stop(); Logger.Log("stopped"); return; }
                 if (!Engine.IsAvailable) { Logger.Log("no voice"); return; }
                 if (Engine.Voices.Count == 0) { Engine.RefreshVoices(); EnsureDefaults(); }
-
                 string source = "uia";
                 string text = GetSelectionViaUia();
                 if (text == null) { source = "copy"; text = GetSelectionViaCopy(); }
+                if (text == null) { source = "pointer"; text = GetParagraphUnderMouse(); }
                 if (text == null) { source = "clipboard"; text = GetClipboardText(); }
                 if (text == null || text.Trim().Length == 0) { Logger.Log("no text app=" + ForegroundApp()); return; }
-
-                bool primary = TextLanguage.IsPrimary(text, Settings.PrimaryLang);
-                VoiceInfo v = primary ? (PrimaryVoice ?? OtherVoice) : (OtherVoice ?? PrimaryVoice);
-                Speak(text, v);
-                Logger.Log("speak " + source + " " + (primary ? Settings.PrimaryLang : "other") + " len=" + text.Length + " app=" + ForegroundApp());
+                Read(text, source);
             }
             catch (Exception ex) { Logger.Log("hotkey error: " + ex.Message); }
             finally { _busy = false; }
         }
 
+        void Read(string text, string source)
+        {
+            bool primary = TextLanguage.IsPrimary(text, Settings.PrimaryLang);
+            VoiceInfo v = primary ? (PrimaryVoice ?? OtherVoice) : (OtherVoice ?? PrimaryVoice);
+            Reader.Start(text, v);
+            Logger.Log("read " + source + " " + (primary ? Settings.PrimaryLang : "other") + " len=" + text.Length + " sentences=" + Reader.Count + " app=" + ForegroundApp());
+        }
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             if (_hotkeyRegistered) UnregisterHotKey(Handle, 1);
             _pulse.Stop();
+            _gesture.Stop();
             _updateTimer.Stop();
+            Reader.Stop(false);
             Engine.Stop();
             _tray.Visible = false;
             base.OnFormClosed(e);

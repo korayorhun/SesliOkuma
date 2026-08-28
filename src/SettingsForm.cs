@@ -24,6 +24,7 @@ namespace SesliOkuma
         readonly Slider _rate = new Slider();
         readonly ToggleSwitch _startup = new ToggleSwitch();
         readonly ToggleSwitch _autoUpdate = new ToggleSwitch();
+        readonly ToggleSwitch _readerBar = new ToggleSwitch();
         readonly Label _rateValue = new Label();
         readonly Label _status = new Label();
         readonly Label _version = new Label();
@@ -153,6 +154,12 @@ namespace SesliOkuma
             _autoUpdate.Location = new Point(W - Pad - 44, y);
             _autoUpdate.CheckedChanged += delegate { if (!_loading) { _app.Settings.AutoUpdate = _autoUpdate.Checked; _app.Settings.Save(); } };
             _body.Controls.Add(_autoUpdate);
+            y += 36;
+
+            _body.Controls.Add(MakeLabel(L.T("ReaderBar"), Theme.Body, Theme.Text, Pad, y + 1, W - 2 * Pad - 56, 22));
+            _readerBar.Location = new Point(W - Pad - 44, y);
+            _readerBar.CheckedChanged += delegate { if (!_loading) { _app.Settings.ShowReaderBar = _readerBar.Checked; _app.Settings.Save(); } };
+            _body.Controls.Add(_readerBar);
             y += 40;
 
             _status.Font = Theme.Small; _status.ForeColor = Theme.Muted; _status.BackColor = Color.Transparent;
@@ -345,6 +352,7 @@ namespace SesliOkuma
             _rateValue.Text = RateText(_rate.Value);
             _startup.Checked = StartupShortcut.IsEnabled;
             _autoUpdate.Checked = _app.Settings.AutoUpdate;
+            _readerBar.Checked = _app.Settings.ShowReaderBar;
             _loading = false;
             ShowHint();
             Relayout();

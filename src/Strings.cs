@@ -76,7 +76,7 @@ namespace SesliOkuma
             all["tr"] = new Dictionary<string, string> {
                 {"Subtitle", "{0}  seçili metni okur  ·  tekrar basınca susar"},
                 {"Hotkey", "KISAYOL"},
-                {"HotkeyHint", "Değiştirmek için tıklayın"},
+                {"HotkeyHint", "Tıkla: değiştir  ·  2×: pano  ·  basılı tut: duraklat"},
                 {"HotkeyCapture", "Yeni tuş kombinasyonuna basın…  (Esc iptal)"},
                 {"HotkeyNeedMod", "Ctrl, Alt, Shift veya Win ile birlikte bir tuş seçin"},
                 {"HotkeyTaken", "{0} başka bir uygulama tarafından kullanılıyor"},
@@ -132,7 +132,7 @@ namespace SesliOkuma
             all["en"] = new Dictionary<string, string> {
                 {"Subtitle", "{0}  reads the selected text  ·  press again to stop"},
                 {"Hotkey", "SHORTCUT"},
-                {"HotkeyHint", "Click to change"},
+                {"HotkeyHint", "Click: change  ·  2×: clipboard  ·  hold: pause"},
                 {"HotkeyCapture", "Press the new key combination…  (Esc to cancel)"},
                 {"HotkeyNeedMod", "Combine a key with Ctrl, Alt, Shift or Win"},
                 {"HotkeyTaken", "{0} is already used by another application"},
@@ -188,7 +188,7 @@ namespace SesliOkuma
             all["zh"] = new Dictionary<string, string> {
                 {"Subtitle", "{0}  朗读选中的文字  ·  再按一次停止"},
                 {"Hotkey", "快捷键"},
-                {"HotkeyHint", "点击更改"},
+                {"HotkeyHint", "点击：更改  ·  按两次：剪贴板  ·  长按：暂停"},
                 {"HotkeyCapture", "请按下新的组合键…  (Esc 取消)"},
                 {"HotkeyNeedMod", "请与 Ctrl、Alt、Shift 或 Win 组合使用"},
                 {"HotkeyTaken", "{0} 已被其他应用占用"},
@@ -244,7 +244,7 @@ namespace SesliOkuma
             all["hi"] = new Dictionary<string, string> {
                 {"Subtitle", "{0}  चयनित पाठ पढ़ता है  ·  रोकने के लिए फिर दबाएँ"},
                 {"Hotkey", "शॉर्टकट"},
-                {"HotkeyHint", "बदलने के लिए क्लिक करें"},
+                {"HotkeyHint", "क्लिक: बदलें  ·  2×: क्लिपबोर्ड  ·  दबाए रखें: रोकें"},
                 {"HotkeyCapture", "नई कुंजी संयोजन दबाएँ…  (रद्द करने के लिए Esc)"},
                 {"HotkeyNeedMod", "किसी कुंजी को Ctrl, Alt, Shift या Win के साथ मिलाएँ"},
                 {"HotkeyTaken", "{0} पहले से किसी अन्य ऐप द्वारा उपयोग में है"},
@@ -300,7 +300,7 @@ namespace SesliOkuma
             all["es"] = new Dictionary<string, string> {
                 {"Subtitle", "{0}  lee el texto seleccionado  ·  pulsa otra vez para detener"},
                 {"Hotkey", "ATAJO"},
-                {"HotkeyHint", "Haz clic para cambiar"},
+                {"HotkeyHint", "Clic: cambiar  ·  2×: portapapeles  ·  mantener: pausa"},
                 {"HotkeyCapture", "Pulsa la nueva combinación de teclas…  (Esc cancela)"},
                 {"HotkeyNeedMod", "Combina una tecla con Ctrl, Alt, Mayús o Win"},
                 {"HotkeyTaken", "{0} ya lo usa otra aplicación"},
@@ -356,7 +356,7 @@ namespace SesliOkuma
             all["fr"] = new Dictionary<string, string> {
                 {"Subtitle", "{0}  lit le texte sélectionné  ·  appuyez à nouveau pour arrêter"},
                 {"Hotkey", "RACCOURCI"},
-                {"HotkeyHint", "Cliquez pour modifier"},
+                {"HotkeyHint", "Clic : modifier  ·  2× : presse-papiers  ·  maintenir : pause"},
                 {"HotkeyCapture", "Appuyez sur la nouvelle combinaison…  (Échap pour annuler)"},
                 {"HotkeyNeedMod", "Combinez une touche avec Ctrl, Alt, Maj ou Win"},
                 {"HotkeyTaken", "{0} est déjà utilisé par une autre application"},
@@ -412,7 +412,7 @@ namespace SesliOkuma
             all["ar"] = new Dictionary<string, string> {
                 {"Subtitle", "{0}  يقرأ النص المحدد  ·  اضغط مرة أخرى للتوقف"},
                 {"Hotkey", "الاختصار"},
-                {"HotkeyHint", "انقر للتغيير"},
+                {"HotkeyHint", "انقر: تغيير  ·  مرتان: الحافظة  ·  مطولاً: إيقاف"},
                 {"HotkeyCapture", "اضغط على مجموعة المفاتيح الجديدة…  (Esc للإلغاء)"},
                 {"HotkeyNeedMod", "اجمع مفتاحاً مع Ctrl أو Alt أو Shift أو Win"},
                 {"HotkeyTaken", "{0} مستخدم بالفعل في تطبيق آخر"},
@@ -468,7 +468,7 @@ namespace SesliOkuma
             all["pt"] = new Dictionary<string, string> {
                 {"Subtitle", "{0}  lê o texto selecionado  ·  pressione de novo para parar"},
                 {"Hotkey", "ATALHO"},
-                {"HotkeyHint", "Clique para alterar"},
+                {"HotkeyHint", "Clique: alterar  ·  2×: área de transf.  ·  segurar: pausar"},
                 {"HotkeyCapture", "Pressione a nova combinação de teclas…  (Esc cancela)"},
                 {"HotkeyNeedMod", "Combine uma tecla com Ctrl, Alt, Shift ou Win"},
                 {"HotkeyTaken", "{0} já é usado por outro aplicativo"},
@@ -543,12 +543,25 @@ namespace SesliOkuma
             Put(all, "ar", "حول", "أداة Windows مجانية ومفتوحة المصدر تقرأ النص الذي تحدده في أي تطبيق باختصار واحد.", "الشيفرة المصدرية", "ملاحظات الإصدار", "الإبلاغ عن مشكلة / اقتراح", "المشروع المستخدم للأصوات الطبيعية", "ادعم المشروع", "تبرع لمرة واحدة دون شروط");
             Put(all, "pt", "Sobre", "Uma ferramenta gratuita e de código aberto para Windows que lê o texto selecionado em qualquer aplicativo com um único atalho.", "Código-fonte", "Notas da versão", "Relatar um problema / sugerir", "Projeto usado para as vozes naturais", "Apoiar o projeto", "Doação única, sem compromissos");
             AddWindowsVoice(all);
+            AddReaderBar(all);
         }
 
         static void Put2(Dictionary<string, Dictionary<string, string>> all, string lang, string install, string installing, string done, string failed, string noVoice, string settings)
         {
             var d = all[lang];
             d["WinVoiceInstall"] = install; d["WinVoiceInstalling"] = installing; d["WinVoiceDone"] = done; d["WinVoiceFailed"] = failed; d["NoVoiceForLang"] = noVoice; d["WinVoiceSettings"] = settings;
+        }
+
+        static void AddReaderBar(Dictionary<string, Dictionary<string, string>> all)
+        {
+            all["hi"]["ReaderBar"] = "पढ़ते समय मिनी बार दिखाएँ";
+            all["tr"]["ReaderBar"] = "Okurken mini çubuğu göster";
+            all["es"]["ReaderBar"] = "Mostrar barra mini al leer";
+            all["fr"]["ReaderBar"] = "Afficher la mini-barre pendant la lecture";
+            all["en"]["ReaderBar"] = "Show mini bar while reading";
+            all["ar"]["ReaderBar"] = "إظهار الشريط الصغير أثناء القراءة";
+            all["zh"]["ReaderBar"] = "朗读时显示迷你工具条";
+            all["pt"]["ReaderBar"] = "Mostrar barra mini ao ler";
         }
 
         static void AddWindowsVoice(Dictionary<string, Dictionary<string, string>> all)

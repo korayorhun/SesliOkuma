@@ -157,6 +157,9 @@ namespace SesliOkuma
             if (_voice == null) return;
             try { Call(_voice, "Speak", "", 3); } catch { }
         }
+
+        public void Pause() { if (_voice == null) return; try { Call(_voice, "Pause"); } catch { } }
+        public void Resume() { if (_voice == null) return; try { Call(_voice, "Resume"); } catch { } }
     }
 
     // Script-based language detection: decides whether a text belongs to the primary language.
