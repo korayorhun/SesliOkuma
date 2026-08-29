@@ -18,6 +18,7 @@ namespace SesliOkuma
         readonly Panel _adv = new Panel();
         readonly ActionCard _updateCard = new ActionCard { ShowDismiss = true };
         readonly ActionCard _naturalCard = new ActionCard();
+        readonly ActionCard _barCard = new ActionCard();
         readonly HotkeyBox _hotkey = new HotkeyBox();
         readonly CaptionLink _primaryCaption = new CaptionLink();
         readonly VoicePicker _primaryPicker = new VoicePicker();
@@ -106,6 +107,12 @@ namespace SesliOkuma
             _naturalCard.ActionClicked += delegate { _naturalCard.SetProgress(0, L.F("NaturalInstalling", 0)); _app.NaturalInstaller.Start(); };
             _naturalCard.BodyClicked += delegate { OpenUrl("https://github.com/gexgd0419/NaturalVoiceSAPIAdapter"); };
             Controls.Add(_naturalCard);
+
+            _barCard.ActionText = L.T("ShowBar");
+            _barCard.Visible = false;
+            _barCard.ActionClicked += delegate { _app.ShowBarAgain(); Relayout(); };
+            Controls.Add(_barCard);
+            _app.Reader.Changed += delegate { if (Visible) Relayout(); };
 
             // ---- body
             _body.BackColor = Theme.Bg; _body.Width = W;
@@ -258,7 +265,17 @@ namespace SesliOkuma
             var u = _app.Updater.Available;
             bool showUpdate = u != null && u.Version.ToString(3) != _app.Settings.SkipVersion;
             bool showNatural = !_app.Engine.HasNaturalVoices || _naturalCard.Busy;
+            bool showBar = _app.Reader.Active && _app.BarHiddenByUser;
             int y = HeaderH;
+            if (showBar)
+            {
+                _barCard.Title = L.T("ReadingNow");
+                string cur = _app.Reader.Current; if (cur.Length > 60) cur = cur.Substring(0, 60) + "…";
+                _barCard.Text2 = cur;
+                _barCard.SetIdle();
+                _barCard.SetBounds(Pad, y, W - 2 * Pad, CardH); y += CardH + Gap;
+            }
+            _barCard.Visible = showBar;
             if (showUpdate)
             {
                 _updateCard.Title = L.F("NewVersion", u.Version.ToString(3)); _updateCard.Text2 = L.T("ReleaseNotes"); _updateCard.Note = L.T("RestartSoon");

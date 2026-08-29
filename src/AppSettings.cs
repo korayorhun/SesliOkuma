@@ -16,6 +16,9 @@ namespace SesliOkuma
         public string DeepLKey = "";
         public bool AdvancedOpen = false;
         public bool HoverRead = false;
+        public int BarX = -1;
+        public int BarY = -1;
+        public bool BarExpanded = false;
         public long WordsTotal = 0;
         public long WordsToday = 0;
         public string StatsDay = "";
@@ -61,6 +64,9 @@ namespace SesliOkuma
                         case "DeepLKey": s.DeepLKey = val; break;
                         case "AdvancedOpen": s.AdvancedOpen = val == "1"; break;
                         case "HoverRead": s.HoverRead = val == "1"; break;
+                        case "BarX": int.TryParse(val, out s.BarX); break;
+                        case "BarY": int.TryParse(val, out s.BarY); break;
+                        case "BarExpanded": s.BarExpanded = val == "1"; break;
                         case "WordsTotal": long.TryParse(val, out s.WordsTotal); break;
                         case "WordsToday": long.TryParse(val, out s.WordsToday); break;
                         case "StatsDay": s.StatsDay = val; break;
@@ -92,7 +98,7 @@ namespace SesliOkuma
             {
                 File.WriteAllLines(FilePath, new[] {
                     "PrimaryVoice=" + PrimaryVoiceId, "OtherVoice=" + OtherVoiceId, "PrimaryLang=" + PrimaryLang,
-                    "Language=" + Language, "Hotkey=" + Hotkey, "TranslateHotkey=" + TranslateHotkey, "DeepLKey=" + DeepLKey, "AdvancedOpen=" + (AdvancedOpen ? "1" : "0"), "HoverRead=" + (HoverRead ? "1" : "0"), "WordsTotal=" + WordsTotal, "WordsToday=" + WordsToday, "StatsDay=" + StatsDay, "Rate=" + Rate,
+                    "Language=" + Language, "Hotkey=" + Hotkey, "TranslateHotkey=" + TranslateHotkey, "DeepLKey=" + DeepLKey, "AdvancedOpen=" + (AdvancedOpen ? "1" : "0"), "HoverRead=" + (HoverRead ? "1" : "0"), "BarX=" + BarX, "BarY=" + BarY, "BarExpanded=" + (BarExpanded ? "1" : "0"), "WordsTotal=" + WordsTotal, "WordsToday=" + WordsToday, "StatsDay=" + StatsDay, "Rate=" + Rate,
                     "AutoUpdate=" + (AutoUpdate ? "1" : "0"), "ShowReaderBar=" + (ShowReaderBar ? "1" : "0"), "SkipVersion=" + SkipVersion, "LastUpdateCheck=" + LastUpdateCheck.ToString("o") });
             }
             catch (Exception ex) { Logger.Log("settings save: " + ex.Message); }

@@ -46,7 +46,9 @@ namespace SesliOkuma
         readonly NotifyIcon _tray = new NotifyIcon();
         readonly System.Windows.Forms.Timer _pulse = new System.Windows.Forms.Timer();
         readonly System.Windows.Forms.Timer _updateTimer = new System.Windows.Forms.Timer();
-        ToolStripMenuItem _miSettings, _miStop, _miSave, _miTranslate, _miUpdates, _miAbout, _miExit;
+        ToolStripMenuItem _miSettings, _miStop, _miBar, _miSave, _miTranslate, _miUpdates, _miAbout, _miExit;
+        bool _barHidden;
+        public bool BarHiddenByUser { get { return _barHidden; } }
         AboutForm _about;
         SettingsForm _settings;
         bool _busy, _wasSpeaking, _hotkeyRegistered;
@@ -77,13 +79,15 @@ namespace SesliOkuma
             _tray.MouseClick += delegate (object s, MouseEventArgs e) { if (e.Button == MouseButtons.Left) ToggleSettings(); };
             var menu = ThemedMenu.Create();
             _miSettings = new ToolStripMenuItem(); _miSettings.Click += delegate { ToggleSettings(); };
-            _miStop = new ToolStripMenuItem(); _miStop.Click += delegate { Engine.Stop(); };
+            _miStop = new ToolStripMenuItem(); _miStop.Click += delegate { Reader.Stop(false); Engine.Stop(); };
+            _miBar = new ToolStripMenuItem(); _miBar.Click += delegate { ShowBarAgain(); };
             _miUpdates = new ToolStripMenuItem(); _miUpdates.Click += delegate { Updater.CheckAsync(true); ShowSettings(); };
             _miSave = new ToolStripMenuItem(); _miSave.Click += delegate { SaveSelectionToWav(); };
             _miTranslate = new ToolStripMenuItem(); _miTranslate.Click += delegate { TranslateSelection(); };
             _miAbout = new ToolStripMenuItem(); _miAbout.Click += delegate { ShowAbout(); };
             _miExit = new ToolStripMenuItem(); _miExit.Click += delegate { Close(); };
-            menu.Items.AddRange(new ToolStripItem[] { _miSettings, _miStop, _miTranslate, _miSave, new ToolStripSeparator(), _miUpdates, _miAbout, new ToolStripSeparator(), _miExit });
+            menu.Items.AddRange(new ToolStripItem[] { _miSettings, _miStop, _miBar, _miTranslate, _miSave, new ToolStripSeparator(), _miUpdates, _miAbout, new ToolStripSeparator(), _miExit });
+            menu.Opening += delegate { _miBar.Visible = Reader.Active && _barHidden; };
             _tray.ContextMenuStrip = menu;
             ApplyTexts();
 
@@ -143,6 +147,7 @@ namespace SesliOkuma
             _miStop.Text = L.T("Stop");
             _miUpdates.Text = L.T("CheckUpdates");
             _miSave.Text = L.T("SaveAudio") + "…";
+            _miBar.Text = L.T("ShowBarMenu");
             _miTranslate.Text = L.T("TranslateRead");
             _miAbout.Text = L.T("About") + "…";
             _miExit.Text = L.T("Exit");
@@ -205,15 +210,20 @@ namespace SesliOkuma
 
         void SyncBar()
         {
-            bool show = Reader.Active && Settings.ShowReaderBar;
+            bool show = Reader.Active && Settings.ShowReaderBar && !_barHidden;
             if (show)
             {
                 if (_bar == null || _bar.IsDisposed)
-                    _bar = new ReaderBar(Reader, delegate { return Settings.Rate; }, delegate (int d) { Settings.Rate = Math.Max(-10, Math.Min(10, Settings.Rate + d)); Settings.Save(); });
+                {
+                    _bar = new ReaderBar(Reader, Settings, delegate { if (_settings != null && !_settings.IsDisposed) _settings.SyncFromApp(); });
+                    _bar.HideRequested += delegate { _barHidden = true; SyncBar(); };
+                }
                 if (!_bar.Visible) { _bar.Place(); _bar.Show(); }
             }
-            else if (_bar != null && !_bar.IsDisposed && _bar.Visible) _bar.Hide();
+            else if (_bar != null && !_bar.IsDisposed && _bar.Visible) { _bar.Hide(); Settings.Save(); }
         }
+
+        public void ShowBarAgain() { _barHidden = false; SyncBar(); }
 
         // Paragraph under the mouse pointer (used when nothing is selected).
         static string GetParagraphUnderMouse()
@@ -444,7 +454,13 @@ namespace SesliOkuma
                 try { if (Clipboard.ContainsText()) text = Clipboard.GetText(); } catch { }
                 break;
             }
-            if (old != null) { try { Clipboard.SetText(old); } catch { } }
+            if (old != null) { try { Clipboard.SetDataObject(old, true, 10, 100); } catch { } }
+            if (text == null || text.Trim().Length == 0)
+            {
+                // Clipboard may have been busy: read back what we restored so the final fallback still works.
+                try { if (Clipboard.ContainsText()) text = Clipboard.GetText(); } catch { }
+                if (text != null && old != null && text == old) return null;   // caller falls through to the clipboard stage anyway
+            }
             return (text != null && text.Trim().Length > 0) ? text : null;
         }
 
@@ -543,6 +559,7 @@ namespace SesliOkuma
         void Read(string text, string source)        {
             bool primary = TextLanguage.IsPrimary(text, Settings.PrimaryLang);
             VoiceInfo v = primary ? (PrimaryVoice ?? OtherVoice) : (OtherVoice ?? PrimaryVoice);
+            _barHidden = false;
             Reader.Start(text, v);
             Settings.CountWords(text);
             Logger.Log("read " + source + " " + (primary ? Settings.PrimaryLang : "other") + " len=" + text.Length + " sentences=" + Reader.Count + " app=" + ForegroundApp());

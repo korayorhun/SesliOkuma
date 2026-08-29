@@ -550,6 +550,7 @@ namespace SesliOkuma
             AddUi(all);
             AddFreeTranslate(all);
             AddMore(all);
+            AddBar2(all);
         }
 
         static void Put2(Dictionary<string, Dictionary<string, string>> all, string lang, string install, string installing, string done, string failed, string noVoice, string settings)
@@ -796,6 +797,18 @@ namespace SesliOkuma
             all["es"]["HoverRead"] = "Leer lo que señala el ratón (accesibilidad)"; all["es"]["Stats"] = "Hoy {0} palabras  ·  total {1}"; all["es"]["ContextMenu"] = "Leer con Sesli Okuma";
             all["pt"]["HoverRead"] = "Ler o que o mouse aponta (acessibilidade)"; all["pt"]["Stats"] = "Hoje {0} palavras  ·  total {1}"; all["pt"]["ContextMenu"] = "Ler com Sesli Okuma";
             all["zh"]["HoverRead"] = "朗读鼠标指向的内容（无障碍）"; all["zh"]["Stats"] = "今天 {0} 词  ·  总计 {1}"; all["zh"]["ContextMenu"] = "用 Sesli Okuma 朗读";
+        }
+
+        static void AddBar2(Dictionary<string, Dictionary<string, string>> all)
+        {
+            all["tr"]["ReadingNow"] = "Okuma sürüyor"; all["tr"]["ShowBar"] = "Göster"; all["tr"]["ShowBarMenu"] = "Mini çubuğu göster"; all["tr"]["HideBar"] = "Gizle (okuma sürer)"; all["tr"]["ExpandTip"] = "Tam cümleyi göster"; all["tr"]["CollapseTip"] = "Daralt";
+            all["ar"]["ReadingNow"] = "القراءة جارية"; all["ar"]["ShowBar"] = "إظهار"; all["ar"]["ShowBarMenu"] = "إظهار الشريط الصغير"; all["ar"]["HideBar"] = "إخفاء (تستمر القراءة)"; all["ar"]["ExpandTip"] = "إظهار الجملة كاملة"; all["ar"]["CollapseTip"] = "طيّ";
+            all["en"]["ReadingNow"] = "Reading in progress"; all["en"]["ShowBar"] = "Show"; all["en"]["ShowBarMenu"] = "Show the mini bar"; all["en"]["HideBar"] = "Hide (keeps reading)"; all["en"]["ExpandTip"] = "Show the full sentence"; all["en"]["CollapseTip"] = "Collapse";
+            all["pt"]["ReadingNow"] = "Leitura em andamento"; all["pt"]["ShowBar"] = "Mostrar"; all["pt"]["ShowBarMenu"] = "Mostrar a barra mini"; all["pt"]["HideBar"] = "Ocultar (continua lendo)"; all["pt"]["ExpandTip"] = "Mostrar a frase completa"; all["pt"]["CollapseTip"] = "Recolher";
+            all["hi"]["ReadingNow"] = "पढ़ना जारी है"; all["hi"]["ShowBar"] = "दिखाएँ"; all["hi"]["ShowBarMenu"] = "मिनी बार दिखाएँ"; all["hi"]["HideBar"] = "छिपाएँ (पढ़ना जारी रहेगा)"; all["hi"]["ExpandTip"] = "पूरा वाक्य दिखाएँ"; all["hi"]["CollapseTip"] = "समेटें";
+            all["zh"]["ReadingNow"] = "正在朗读"; all["zh"]["ShowBar"] = "显示"; all["zh"]["ShowBarMenu"] = "显示迷你工具条"; all["zh"]["HideBar"] = "隐藏（继续朗读）"; all["zh"]["ExpandTip"] = "显示完整句子"; all["zh"]["CollapseTip"] = "收起";
+            all["fr"]["ReadingNow"] = "Lecture en cours"; all["fr"]["ShowBar"] = "Afficher"; all["fr"]["ShowBarMenu"] = "Afficher la mini-barre"; all["fr"]["HideBar"] = "Masquer (la lecture continue)"; all["fr"]["ExpandTip"] = "Afficher la phrase complète"; all["fr"]["CollapseTip"] = "Réduire";
+            all["es"]["ReadingNow"] = "Lectura en curso"; all["es"]["ShowBar"] = "Mostrar"; all["es"]["ShowBarMenu"] = "Mostrar la barra mini"; all["es"]["HideBar"] = "Ocultar (sigue leyendo)"; all["es"]["ExpandTip"] = "Mostrar la frase completa"; all["es"]["CollapseTip"] = "Contraer";
         }
 
         static void AddReaderBar(Dictionary<string, Dictionary<string, string>> all)
