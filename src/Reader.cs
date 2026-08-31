@@ -61,16 +61,28 @@ namespace SesliOkuma
             return spans;
         }
 
-        public void Start(string text, VoiceInfo voice)
+        public void Start(string text, VoiceInfo voice) { StartAt(text, voice, 0); }
+
+        public void StartAt(string text, VoiceInfo voice, int rawOffset)
         {
             Stop(false);
             _full = Normalize(text);
             if (_full.Length == 0) return;
             _voice = voice;
+            int startOff = MapOffset(text, rawOffset);
             _sentences.Clear(); _sentences.AddRange(Spans(_full));
             Active = true; Paused = false;
-            SpeakFrom(0, true);
+            SpeakFrom(startOff, startOff == 0);
             if (Changed != null) Changed();
+        }
+
+        int MapOffset(string raw, int rawOffset)
+        {
+            if (rawOffset <= 0) return 0;
+            int off = Normalize(raw.Substring(0, Math.Min(rawOffset, raw.Length))).Length;
+            if (off >= _full.Length) off = _full.Length - 1;
+            while (off > 0 && !char.IsWhiteSpace(_full[off - 1])) off--;
+            return off;
         }
 
         // Speaks _full from the given offset. With leadIn, a short first chunk keeps online voices fast.
@@ -222,9 +234,9 @@ namespace SesliOkuma
         readonly Reader _reader;
         readonly AppSettings _settings;
         readonly Action _rateChanged;
-        bool _editable;
+        bool _editable, _userTouchedText;
         public event EventHandler CloseRequested;
-        public event Action<string> PlayRequested;      // play pressed after reading finished (possibly edited text)
+        public event Action<string, int> PlayRequested; // play while idle, or paused after touching the text: text + caret offset
         readonly FlatButton _pause = new FlatButton { IconGlyph = true, Borderless = true, Accent = true, Size = new Size(38, 34) };
         readonly FlatButton _back = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(32, 34), Text = "\uE892" };
         readonly FlatButton _skip = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(32, 34), Text = "\uE893" };
@@ -254,9 +266,12 @@ namespace SesliOkuma
 
             _pause.Click += delegate
             {
-                if (_reader.Active) { _reader.TogglePause(); return; }
+                if (_reader.Active && !_reader.Paused) { _reader.TogglePause(); return; }
+                if (_reader.Active && _reader.Paused && !_userTouchedText) { _reader.TogglePause(); return; }
                 string t = _settings.BarExpanded ? _full.Text : _loadedText;
-                if (t != null && t.Trim().Length > 0 && PlayRequested != null) PlayRequested(t);
+                int off = _settings.BarExpanded && _userTouchedText ? _full.SelectionStart : 0;
+                if (_reader.Active) _reader.Stop(false);
+                if (t != null && t.Trim().Length > 0 && PlayRequested != null) PlayRequested(t, off);
             };
             _skip.Click += delegate { _reader.Skip(); };
             _back.Click += delegate { _reader.Back(); };
@@ -269,7 +284,8 @@ namespace SesliOkuma
 
             MouseDown += Drag; _text.MouseDown += Drag;
             _full.GotFocus += delegate { if (!_editable) HideCaret(_full.Handle); };
-            _full.MouseDown += delegate { if (!_reader.Active) EnableEditing(); };
+            _full.MouseDown += delegate { if (!_reader.Active || _reader.Paused) { _userTouchedText = true; EnableEditing(); } };
+            _full.KeyDown += delegate { if (_editable) _userTouchedText = true; };
             _reader.Changed += Sync;
             _reader.Position += SyncHighlight;
             Sync();
@@ -345,7 +361,9 @@ namespace SesliOkuma
         void Sync()
         {
             if (IsDisposed) return;
-            if (_reader.Active) DisableEditing();
+            bool reading = _reader.Active && !_reader.Paused;
+            if (reading) { DisableEditing(); _userTouchedText = false; }
+            _full.ReadOnly = reading;
             _pause.Text = !_reader.Active ? "\uE768" : (_reader.Paused ? "\uE768" : "\uE769");
             Tips.Set(_pause, !_reader.Active ? L.T("Listen") : (_reader.Paused ? L.T("Resume") : L.T("Pause")));
             _speed.Text = (1.0 + _settings.Rate * 0.1).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "\u00d7";
