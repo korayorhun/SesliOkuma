@@ -213,10 +213,18 @@ namespace SesliOkuma
         [System.Runtime.InteropServices.DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
         [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool ReleaseCapture();
         [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool HideCaret(IntPtr hWnd);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern int GetWindowLong(IntPtr hWnd, int index);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern int SetWindowLong(IntPtr hWnd, int index, int value);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
+        const int GWL_EXSTYLE = -20, WS_EX_NOACTIVATE = 0x08000000;
 
         readonly Reader _reader;
         readonly AppSettings _settings;
         readonly Action _rateChanged;
+        bool _editable;
+        public event EventHandler CloseRequested;
+        public event Action<string> PlayRequested;      // play pressed after reading finished (possibly edited text)
         readonly FlatButton _pause = new FlatButton { IconGlyph = true, Borderless = true, Accent = true, Size = new Size(38, 34) };
         readonly FlatButton _back = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(32, 34), Text = "\uE892" };
         readonly FlatButton _skip = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(32, 34), Text = "\uE893" };
@@ -239,15 +247,20 @@ namespace SesliOkuma
             Text = "SesliOkumaReaderBar";
 
             _text.Font = Theme.Body; _text.ForeColor = Theme.Text;
-            _full.ReadOnly = true; _full.BorderStyle = BorderStyle.None; _full.BackColor = Theme.Bg; _full.ForeColor = Theme.Text;
+            _full.ReadOnly = true; _full.HideSelection = true; _full.BorderStyle = BorderStyle.None; _full.BackColor = Theme.Bg; _full.ForeColor = Theme.Text;
             _full.Font = new Font("Segoe UI", 10.5f); _full.WordWrap = true; _full.ScrollBars = RichTextBoxScrollBars.None; _full.TabStop = false;
             _full.Visible = false; _full.Cursor = Cursors.Default;
             Controls.AddRange(new Control[] { _back, _pause, _skip, _speed, _text, _expand, _hide, _close, _full });
 
-            _pause.Click += delegate { _reader.TogglePause(); };
+            _pause.Click += delegate
+            {
+                if (_reader.Active) { _reader.TogglePause(); return; }
+                string t = _settings.BarExpanded ? _full.Text : _loadedText;
+                if (t != null && t.Trim().Length > 0 && PlayRequested != null) PlayRequested(t);
+            };
             _skip.Click += delegate { _reader.Skip(); };
             _back.Click += delegate { _reader.Back(); };
-            _close.Click += delegate { _reader.Stop(false); };
+            _close.Click += delegate { _reader.Stop(false); if (CloseRequested != null) CloseRequested(this, EventArgs.Empty); };
             _hide.Click += delegate { if (HideRequested != null) HideRequested(this, EventArgs.Empty); };
             _expand.Click += delegate { _settings.BarExpanded = !_settings.BarExpanded; _settings.Save(); Sync(); };
             _speed.Click += delegate { ShowSpeedMenu(); };
@@ -255,6 +268,8 @@ namespace SesliOkuma
             Tips.Set(_hide, L.T("HideBar")); Tips.Set(_speed, L.T("SpeedTip"));
 
             MouseDown += Drag; _text.MouseDown += Drag;
+            _full.GotFocus += delegate { if (!_editable) HideCaret(_full.Handle); };
+            _full.MouseDown += delegate { if (!_reader.Active) EnableEditing(); };
             _reader.Changed += Sync;
             _reader.Position += SyncHighlight;
             Sync();
@@ -307,11 +322,32 @@ namespace SesliOkuma
             return Color.FromArgb((int)(a.R * t + b.R * (1 - t)), (int)(a.G * t + b.G * (1 - t)), (int)(a.B * t + b.B * (1 - t)));
         }
 
+        // Explicit click into the text (while idle) hands the window normal activation so the user can edit.
+        void EnableEditing()
+        {
+            if (_editable) return;
+            _editable = true;
+            SetWindowLong(Handle, GWL_EXSTYLE, GetWindowLong(Handle, GWL_EXSTYLE) & ~WS_EX_NOACTIVATE);
+            _full.ReadOnly = false;
+            SetForegroundWindow(Handle);
+            _full.Focus();
+        }
+
+        void DisableEditing()
+        {
+            if (!_editable) return;
+            _editable = false;
+            SetWindowLong(Handle, GWL_EXSTYLE, GetWindowLong(Handle, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
+            _full.ReadOnly = true;
+            HideCaret(_full.Handle);
+        }
+
         void Sync()
         {
             if (IsDisposed) return;
-            _pause.Text = _reader.Paused ? "\uE768" : "\uE769";
-            Tips.Set(_pause, _reader.Paused ? L.T("Resume") : L.T("Pause"));
+            if (_reader.Active) DisableEditing();
+            _pause.Text = !_reader.Active ? "\uE768" : (_reader.Paused ? "\uE768" : "\uE769");
+            Tips.Set(_pause, !_reader.Active ? L.T("Listen") : (_reader.Paused ? L.T("Resume") : L.T("Pause")));
             _speed.Text = (1.0 + _settings.Rate * 0.1).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "\u00d7";
             bool exp = _settings.BarExpanded;
             _expand.Text = exp ? "\uE70D" : "\uE70E";
@@ -381,8 +417,11 @@ namespace SesliOkuma
                         _full.Select(start, len);
                         _full.SelectionBackColor = Soft(Theme.Accent, Theme.Bg, 0.22f);
                         _hlStart = start; _hlLen = len;
-                        _full.Select(start, 0);
-                        _full.ScrollToCaret();
+                        // Scroll only when the word leaves the comfortable band; keeps lines from hopping.
+                        var pt = _full.GetPositionFromCharIndex(start);
+                        if (pt.Y < 4 || pt.Y > _full.Height - 26) { _full.Select(start, 0); _full.ScrollToCaret(); }
+                        else _full.Select(start, 0);
+                        if (!_editable) HideCaret(_full.Handle);
                     }
                 }
             }

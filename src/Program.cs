@@ -208,15 +208,20 @@ namespace SesliOkuma
             catch (Exception ex) { Logger.Log("speak failed: " + ex.Message); }
         }
 
+        bool _barSession;                     // a reading happened; keep the bar open after it finishes
+
         void SyncBar()
         {
-            bool show = Reader.Active && Settings.ShowReaderBar && !_barHidden;
+            if (Reader.Active) _barSession = true;
+            bool show = _barSession && Settings.ShowReaderBar && !_barHidden;
             if (show)
             {
                 if (_bar == null || _bar.IsDisposed)
                 {
                     _bar = new ReaderBar(Reader, Settings, delegate { if (_settings != null && !_settings.IsDisposed) _settings.SyncFromApp(); });
                     _bar.HideRequested += delegate { _barHidden = true; SyncBar(); };
+                    _bar.CloseRequested += delegate { _barSession = false; SyncBar(); };
+                    _bar.PlayRequested += delegate (string t) { ReadEdited(t); };
                 }
                 if (!_bar.Visible) { _bar.Place(); _bar.Show(); }
             }
@@ -224,6 +229,15 @@ namespace SesliOkuma
         }
 
         public void ShowBarAgain() { _barHidden = false; SyncBar(); }
+
+        // Play pressed on the idle bar: read its (possibly user-edited) text.
+        void ReadEdited(string text)
+        {
+            bool primary = TextLanguage.IsPrimary(text, Settings.PrimaryLang);
+            VoiceInfo v = primary ? (PrimaryVoice ?? OtherVoice) : (OtherVoice ?? PrimaryVoice);
+            Reader.Start(text, v);
+            Logger.Log("read edited len=" + text.Length);
+        }
 
         // Paragraph under the mouse pointer (used when nothing is selected).
         static string GetParagraphUnderMouse()
