@@ -206,8 +206,8 @@ namespace SesliOkuma
         }
     }
 
-    // Floating bar shown while reading: draggable anywhere, hideable, speed menu, expandable full text
-    // with a soft highlight that follows the spoken word.
+    // Floating player: text on top (follows the spoken word with a soft highlight), a centered
+    // transport row below, rounded chrome and an edge-to-edge progress hairline.
     public sealed class ReaderBar : Form
     {
         [System.Runtime.InteropServices.DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
@@ -217,16 +217,16 @@ namespace SesliOkuma
         readonly Reader _reader;
         readonly AppSettings _settings;
         readonly Action _rateChanged;
-        readonly FlatButton _pause = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(34, 34) };
-        readonly FlatButton _back = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(34, 34), Text = "\uE892" };
-        readonly FlatButton _skip = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(34, 34), Text = "\uE893" };
-        readonly FlatButton _speed = new FlatButton { Borderless = true, Size = new Size(52, 34) };
-        readonly FlatButton _expand = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(30, 34), Text = "\uE70E" };
-        readonly FlatButton _hide = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(30, 34), Text = "\uE921" };
-        readonly FlatButton _close = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(30, 34), Text = "\uE711" };
+        readonly FlatButton _pause = new FlatButton { IconGlyph = true, Borderless = true, Accent = true, Size = new Size(38, 34) };
+        readonly FlatButton _back = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(32, 34), Text = "\uE892" };
+        readonly FlatButton _skip = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(32, 34), Text = "\uE893" };
+        readonly FlatButton _speed = new FlatButton { Borderless = true, Size = new Size(48, 34) };
+        readonly FlatButton _expand = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE70E" };
+        readonly FlatButton _hide = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE921" };
+        readonly FlatButton _close = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE711" };
         readonly Label _text = new Label { AutoSize = false, TextAlign = ContentAlignment.MiddleLeft, BackColor = Color.Transparent, AutoEllipsis = true };
         readonly RichTextBox _full = new RichTextBox();
-        const int W = 560, BaseH = 56, FullH = 168;
+        const int W = 560, RowH = 46, TextMax = 150;
         int _hlStart = -1, _hlLen;
         string _loadedText = "";
         public event EventHandler HideRequested;
@@ -235,20 +235,12 @@ namespace SesliOkuma
         {
             _reader = reader; _settings = settings; _rateChanged = rateChanged;
             FormBorderStyle = FormBorderStyle.None; ShowInTaskbar = false; TopMost = true; StartPosition = FormStartPosition.Manual;
-            BackColor = Theme.Bg; ForeColor = Theme.Text; Font = Theme.Body; ClientSize = new Size(W, BaseH); DoubleBuffered = true;
+            BackColor = Theme.Bg; ForeColor = Theme.Text; Font = Theme.Body; ClientSize = new Size(W, RowH + 6); DoubleBuffered = true;
             Text = "SesliOkumaReaderBar";
 
-            int x = 10;
-            _back.Location = new Point(x, 11); x += 38;
-            _pause.Location = new Point(x, 11); x += 38;
-            _skip.Location = new Point(x, 11); x += 42;
-            _speed.Location = new Point(x, 11); x += 60;
-            _text.Font = Theme.Body; _text.ForeColor = Theme.Text; _text.SetBounds(x, 17, W - x - 104, 22);
-            _close.Location = new Point(W - 40, 11);
-            _hide.Location = new Point(W - 40 - 32, 11);
-            _expand.Location = new Point(W - 40 - 64, 11);
+            _text.Font = Theme.Body; _text.ForeColor = Theme.Text;
             _full.ReadOnly = true; _full.BorderStyle = BorderStyle.None; _full.BackColor = Theme.Bg; _full.ForeColor = Theme.Text;
-            _full.Font = Theme.Body; _full.WordWrap = true; _full.ScrollBars = RichTextBoxScrollBars.Vertical; _full.TabStop = false;
+            _full.Font = new Font("Segoe UI", 10.5f); _full.WordWrap = true; _full.ScrollBars = RichTextBoxScrollBars.None; _full.TabStop = false;
             _full.Visible = false; _full.Cursor = Cursors.Default;
             Controls.AddRange(new Control[] { _back, _pause, _skip, _speed, _text, _expand, _hide, _close, _full });
 
@@ -274,13 +266,13 @@ namespace SesliOkuma
             int[] steps = { -4, -2, 0, 2, 4, 6 };
             foreach (int v in steps)
             {
-                string label = (1.0 + v * 0.1).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "×";
-                if (v == 0) label += "  ·  " + L.T("Normal");
+                string label = (1.0 + v * 0.1).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "\u00d7";
+                if (v == 0) label += "  \u00b7  " + L.T("Normal");
                 var item = new ToolStripMenuItem(label) { Tag = v, Checked = _settings.Rate == v };
                 item.Click += delegate { _settings.Rate = (int)item.Tag; _settings.Save(); if (_rateChanged != null) _rateChanged(); _reader.Restart(); Sync(); };
                 menu.Items.Add(item);
             }
-            menu.Show(_speed, new Point(0, _speed.Height + 4));
+            menu.Show(_speed, new Point(0, -6 * 32));
         }
 
         protected override bool ShowWithoutActivation { get { return true; } }
@@ -320,13 +312,14 @@ namespace SesliOkuma
             if (IsDisposed) return;
             _pause.Text = _reader.Paused ? "\uE768" : "\uE769";
             Tips.Set(_pause, _reader.Paused ? L.T("Resume") : L.T("Pause"));
-            _speed.Text = (1.0 + _settings.Rate * 0.1).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "×";
+            _speed.Text = (1.0 + _settings.Rate * 0.1).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "\u00d7";
             bool exp = _settings.BarExpanded;
             _expand.Text = exp ? "\uE70D" : "\uE70E";
             Tips.Set(_expand, L.T(exp ? "CollapseTip" : "ExpandTip"));
             _text.Visible = !exp;
             _full.Visible = exp;
-            int h = BaseH;
+
+            int h;
             if (exp)
             {
                 if (_loadedText != _reader.FullText)
@@ -337,16 +330,37 @@ namespace SesliOkuma
                 }
                 int th;
                 using (var g = CreateGraphics())
-                    th = Math.Min(FullH, Math.Max(28, TextRenderer.MeasureText(g, _loadedText, Theme.Body, new Size(W - 28, 2000), TextFormatFlags.WordBreak).Height + 12));
-                _full.SetBounds(14, BaseH - 6, W - 28, th);
-                h = BaseH + th + 6;
+                    th = Math.Min(TextMax, Math.Max(30, TextRenderer.MeasureText(g, _loadedText, _full.Font, new Size(W - 44, 2000), TextFormatFlags.WordBreak).Height + 10));
+                _full.SetBounds(22, 16, W - 44, th);
+                h = 16 + th + 6 + RowH;
+                int rowY = h - RowH + 2;
+                int cx = W / 2;
+                _back.Location = new Point(cx - 16 - 4 - 32, rowY);
+                _pause.Location = new Point(cx - 19, rowY);
+                _skip.Location = new Point(cx + 19 + 4, rowY);
+                _speed.Location = new Point(14, rowY);
+                _expand.Location = new Point(W - 14 - 28 - 4 - 28 - 4 - 28, rowY);
+                _hide.Location = new Point(W - 14 - 28 - 4 - 28, rowY);
+                _close.Location = new Point(W - 14 - 28, rowY);
+            }
+            else
+            {
+                h = RowH + 6;
+                int rowY = 6;
+                _back.Location = new Point(10, rowY);
+                _pause.Location = new Point(46, rowY);
+                _skip.Location = new Point(88, rowY);
+                _speed.Location = new Point(124, rowY);
+                _text.SetBounds(180, rowY + 6, W - 180 - 104, 22);
+                _text.Text = _reader.CurrentSentence;
+                _expand.Location = new Point(W - 14 - 28 - 4 - 28 - 4 - 28, rowY);
+                _hide.Location = new Point(W - 14 - 28 - 4 - 28, rowY);
+                _close.Location = new Point(W - 14 - 28, rowY);
             }
             if (ClientSize.Height != h) ClientSize = new Size(W, h);
-            if (!exp) _text.Text = _reader.CurrentSentence;
             Invalidate();
         }
 
-        // Soft highlight of the word being spoken; also keeps the collapsed label and progress fresh.
         void SyncHighlight()
         {
             if (IsDisposed || !_reader.Active) return;
@@ -373,7 +387,7 @@ namespace SesliOkuma
                 }
             }
             else if (!_settings.BarExpanded) _text.Text = _reader.CurrentSentence;
-            Invalidate(new Rectangle(0, Height - 6, Width, 6));
+            Invalidate(new Rectangle(0, Height - 4, Width, 4));
         }
 
         void Drag(object s, MouseEventArgs e)
@@ -387,10 +401,11 @@ namespace SesliOkuma
         {
             base.OnPaint(e);
             Theme.Prepare(e.Graphics);
-            using (var pen = new Pen(Theme.Border)) e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+            using (var path = Theme.RoundRect(new RectangleF(0.5f, 0.5f, Width - 1, Height - 1), 8))
+            using (var pen = new Pen(Theme.Border)) e.Graphics.DrawPath(pen, path);
             float frac = (float)_reader.Fraction;
-            using (var b = new SolidBrush(Theme.Track)) e.Graphics.FillRectangle(b, 12, Height - 5, Width - 24, 2);
-            using (var b = new SolidBrush(Theme.Accent)) e.Graphics.FillRectangle(b, 12, Height - 5, (Width - 24) * frac, 2);
+            using (var b = new SolidBrush(Theme.Track)) e.Graphics.FillRectangle(b, 1, Height - 3, Width - 2, 2);
+            using (var b = new SolidBrush(Theme.Accent)) e.Graphics.FillRectangle(b, 1, Height - 3, (Width - 2) * frac, 2);
         }
     }
 }
