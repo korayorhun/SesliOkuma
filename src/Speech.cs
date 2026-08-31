@@ -144,13 +144,24 @@ namespace SesliOkuma
             }
         }
 
-        public void Speak(string text, VoiceInfo voice, int rate)
+        public int Speak(string text, VoiceInfo voice, int rate)
         {
-            if (_voice == null) return;
+            if (_voice == null) return -1;
             if (voice != null) Set(_voice, "Voice", voice.Token);
             Set(_voice, "Rate", Math.Max(-10, Math.Min(10, rate)));
-            Call(_voice, "Speak", text, 3);
+            return Convert.ToInt32(Call(_voice, "Speak", text, 3));          // async + purge
         }
+
+        // Queued after the current utterance (no purge); used for the remainder after the short lead-in.
+        public int SpeakQueued(string text)
+        {
+            if (_voice == null) return -1;
+            try { return Convert.ToInt32(Call(_voice, "Speak", text, 1)); } catch { return -1; }
+        }
+
+        public int CurrentStream { get { try { return Convert.ToInt32(Get(Get(_voice, "Status"), "CurrentStreamNumber")); } catch { return 0; } } }
+        public int WordPosition { get { try { return Convert.ToInt32(Get(Get(_voice, "Status"), "InputWordPosition")); } catch { return 0; } } }
+        public int WordLength { get { try { return Convert.ToInt32(Get(Get(_voice, "Status"), "InputWordLength")); } catch { return 0; } } }
 
         public void Stop()
         {

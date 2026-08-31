@@ -6,23 +6,28 @@ using System.Windows.Forms;
 
 namespace SesliOkuma
 {
-    // Sentence-by-sentence playback on top of SpeechEngine: pause/resume, skip, live speed, progress.
+    // Single-utterance playback: the whole text is sent to the engine at once (no per-sentence gaps).
+    // A short lead-in chunk keeps the start fast for online voices; sentence positions are tracked
+    // locally for prev/next, the collapsed label, progress and the soft word highlight.
     public sealed class Reader
     {
+        struct Span { public int Start, Length; }
+
         readonly SpeechEngine _engine;
         readonly Func<int> _rate;
-        readonly List<string> _sentences = new List<string>();
-        int _index = -1;
-        DateTime _launched;
+        readonly List<Span> _sentences = new List<Span>();
+        string _full = "";
+        int _segAOffset, _segBOffset;         // char offsets of the two queued segments within _full
+        int _streamA = -1, _streamB = -1;
+        DateTime _launched, _lastSpeaking;
         bool _sawSpeaking;
         VoiceInfo _voice;
 
         public bool Active { get; private set; }
         public bool Paused { get; private set; }
-        public int Count { get { return _sentences.Count; } }
-        public int Index { get { return Math.Max(0, _index); } }
-        public string Current { get { return _index >= 0 && _index < _sentences.Count ? _sentences[_index] : ""; } }
-        public event Action Changed;      // state/progress changed
+        public string FullText { get { return _full; } }
+        public event Action Changed;          // start/stop/pause state
+        public event Action Position;         // word position advanced (highlight)
         public event Action Finished;
 
         public Reader(SpeechEngine engine, Func<int> rate) { _engine = engine; _rate = rate; }
@@ -30,120 +35,179 @@ namespace SesliOkuma
         public static List<string> Split(string text)
         {
             var list = new List<string>();
-            text = text.Replace("\r", "\n");
-            foreach (string para in text.Split('\n'))
-            {
-                string p = para.Trim();
-                if (p.Length == 0) continue;
-                // Split after . ! ? … when followed by whitespace; keep short fragments together.
-                var parts = Regex.Split(p, @"(?<=[\.!\?…])\s+(?=\S)");
-                string pending = "";
-                foreach (string s in parts)
-                {
-                    string t = s.Trim();
-                    if (t.Length == 0) continue;
-                    pending = pending.Length == 0 ? t : pending + " " + t;
-                    if (pending.Length >= 24) { list.Add(pending); pending = ""; }
-                }
-                if (pending.Length > 0) list.Add(pending);
-            }
+            foreach (var sp in Spans(Normalize(text))) list.Add(Normalize(text).Substring(sp.Start, sp.Length));
             return list;
+        }
+
+        static string Normalize(string text)
+        {
+            // Line breaks inside copied text cause artificial pauses; flatten them to spaces.
+            text = text.Replace("\r", " ").Replace("\n", " ").Replace("\t", " ");
+            return Regex.Replace(text, @"  +", " ").Trim();
+        }
+
+        static List<Span> Spans(string full)
+        {
+            var spans = new List<Span>();
+            int start = 0;
+            foreach (Match m in Regex.Matches(full, @"[\.!\?…]+(\s+|$)"))
+            {
+                int end = m.Index + m.Length;
+                if (end - start > 1) spans.Add(new Span { Start = start, Length = end - start });
+                start = end;
+            }
+            if (start < full.Length) spans.Add(new Span { Start = start, Length = full.Length - start });
+            if (spans.Count == 0 && full.Length > 0) spans.Add(new Span { Start = 0, Length = full.Length });
+            return spans;
         }
 
         public void Start(string text, VoiceInfo voice)
         {
             Stop(false);
-            _sentences.Clear();
-            _sentences.AddRange(Split(text));
-            // Online voices return audio faster for short requests: start with a short lead-in chunk.
-            if (_sentences.Count > 0 && _sentences[0].Length > 70)
-            {
-                string first = _sentences[0];
-                int cut = -1;
-                foreach (char sep in new[] { ',', ';', ':' }) { int i = first.IndexOf(sep, 20); if (i > 0 && i < 90 && (cut < 0 || i < cut)) cut = i; }
-                if (cut < 0) { int sp = first.IndexOf(' ', 60); if (sp > 0 && sp < first.Length - 20) cut = sp; }
-                if (cut > 0) { _sentences[0] = first.Substring(cut + 1).Trim(); _sentences.Insert(0, first.Substring(0, cut + 1).Trim()); }
-            }            if (_sentences.Count == 0) return;
+            _full = Normalize(text);
+            if (_full.Length == 0) return;
             _voice = voice;
-            Active = true; Paused = false; _index = -1;
-            Next();
-        }
-
-        void SpeakCurrent()
-        {
-            _launched = DateTime.UtcNow; _sawSpeaking = false;
-            try { _engine.Speak(_sentences[_index], _voice, _rate()); }
-            catch (Exception ex) { Logger.Log("reader speak: " + ex.Message); }
+            _sentences.Clear(); _sentences.AddRange(Spans(_full));
+            Active = true; Paused = false;
+            SpeakFrom(0, true);
             if (Changed != null) Changed();
         }
 
-        void Next()
+        // Speaks _full from the given offset. With leadIn, a short first chunk keeps online voices fast.
+        void SpeakFrom(int offset, bool leadIn)
         {
-            if (_index + 1 >= _sentences.Count) { Stop(true); return; }
-            _index++;
-            Logger.Log("reader sentence " + (_index + 1) + "/" + _sentences.Count);
-            SpeakCurrent();
+            string rest = _full.Substring(offset);
+            _launched = DateTime.UtcNow; _lastSpeaking = DateTime.UtcNow; _sawSpeaking = false;
+            _streamB = -1;
+            int cut = -1;
+            if (leadIn && rest.Length > 150)
+            {
+                foreach (char sep in new[] { ',', ';', ':', '.', '!', '?' }) { int i = rest.IndexOf(sep, 20); if (i > 0 && i < 90 && (cut < 0 || i < cut)) cut = i; }
+                if (cut < 0) { int sp = rest.IndexOf(' ', 60); if (sp > 0 && sp < 110) cut = sp; }
+            }
+            Logger.Log("reader start off=" + offset + " len=" + rest.Length + " lead=" + (cut > 0 ? cut : 0));
+            try
+            {
+                if (cut > 0)
+                {
+                    _segAOffset = offset;
+                    _streamA = _engine.Speak(rest.Substring(0, cut + 1), _voice, _rate());
+                    _segBOffset = offset + cut + 1;
+                    while (_segBOffset < _full.Length && _full[_segBOffset] == ' ') _segBOffset++;
+                    _streamB = _engine.SpeakQueued(_full.Substring(_segBOffset));
+                }
+                else
+                {
+                    _segAOffset = offset;
+                    _streamA = _engine.Speak(rest, _voice, _rate());
+                }
+            }
+            catch (Exception ex) { Logger.Log("reader speak: " + ex.Message); }
         }
 
-        // Called ~every 150 ms from the UI timer.
+        // Current absolute character index within _full, from the engine's word position.
+        public int CharIndex
+        {
+            get
+            {
+                if (!Active) return 0;
+                int stream = _engine.CurrentStream;
+                int baseOff = (stream == _streamB && _streamB >= 0) ? _segBOffset : _segAOffset;
+                int pos = _engine.WordPosition;
+                int idx = baseOff + Math.Max(0, pos);
+                return Math.Min(idx, Math.Max(0, _full.Length - 1));
+            }
+        }
+
+        public int WordLength { get { int l = _engine.WordLength; return l > 0 ? l : 0; } }
+        public int SentenceCount { get { return _sentences.Count; } }
+        public double Fraction { get { return _full.Length > 0 ? Math.Min(1.0, CharIndex / (double)_full.Length) : 0; } }
+
+        int SentenceIndexAt(int charIndex)
+        {
+            for (int i = 0; i < _sentences.Count; i++)
+                if (charIndex < _sentences[i].Start + _sentences[i].Length) return i;
+            return _sentences.Count - 1;
+        }
+
+        public string CurrentSentence
+        {
+            get
+            {
+                if (!Active || _sentences.Count == 0) return "";
+                var sp = _sentences[SentenceIndexAt(CharIndex)];
+                return _full.Substring(sp.Start, sp.Length).Trim();
+            }
+        }
+
+        int _lastIndex = -1;
+
+        // Called ~every 120 ms from the UI timer.
         public void Tick()
         {
-            if (!Active || Paused) return;
-            bool speaking = _engine.IsSpeaking;
-            if (speaking) { _sawSpeaking = true; return; }
-            double ms = (DateTime.UtcNow - _launched).TotalMilliseconds;
-            if (_sawSpeaking || ms > 6000) Next();          // finished (or the voice never started: give up on it)
+            if (!Active) return;
+            if (!Paused)
+            {
+                bool speaking = _engine.IsSpeaking;
+                if (speaking) { _sawSpeaking = true; _lastSpeaking = DateTime.UtcNow; }
+                else
+                {
+                    double idle = (DateTime.UtcNow - _lastSpeaking).TotalMilliseconds;
+                    double total = (DateTime.UtcNow - _launched).TotalMilliseconds;
+                    if ((_sawSpeaking && idle > 1200) || (!_sawSpeaking && total > 15000)) { Stop(true); return; }
+                }
+            }
+            int idx = CharIndex;
+            if (idx != _lastIndex) { _lastIndex = idx; if (Position != null) Position(); }
         }
 
         public void TogglePause()
         {
             if (!Active) return;
-            if (Paused) { Paused = false; _engine.Resume(); }
+            if (Paused) { Paused = false; _lastSpeaking = DateTime.UtcNow; _engine.Resume(); }
             else { Paused = true; _engine.Pause(); }
             Logger.Log(Paused ? "reader paused" : "reader resumed");
             if (Changed != null) Changed();
         }
 
-        public void Skip()
+        public void Skip() { Jump(1); }
+        public void Back() { Jump(-1); }
+
+        void Jump(int delta)
         {
-            if (!Active) return;
-            if (Paused) { Paused = false; _engine.Resume(); }
-            _engine.Stop();
-            Next();
+            if (!Active || _sentences.Count == 0) return;
+            if (Paused) { Paused = false; try { _engine.Resume(); } catch { } }
+            int i = SentenceIndexAt(CharIndex) + delta;
+            if (i >= _sentences.Count) { Stop(true); return; }
+            if (i < 0) i = 0;
+            Logger.Log("reader jump to sentence " + (i + 1) + "/" + _sentences.Count);
+            SpeakFrom(_sentences[i].Start, false);
+            if (Changed != null) Changed();
         }
 
-        public void Back()
-        {
-            if (!Active) return;
-            if (Paused) { Paused = false; _engine.Resume(); }
-            _engine.Stop();
-            _index = Math.Max(-1, _index - 2);
-            Next();
-        }
-
-        // Speed changed while reading: restart the current sentence at the new rate.
+        // Rate changed: continue from the start of the current sentence at the new rate.
         public void Restart()
         {
-            if (!Active || _index < 0) return;
-            if (Paused) { Paused = false; _engine.Resume(); }
-            _engine.Stop();
-            SpeakCurrent();
+            if (!Active || _sentences.Count == 0) return;
+            if (Paused) { Paused = false; try { _engine.Resume(); } catch { } }
+            SpeakFrom(_sentences[SentenceIndexAt(CharIndex)].Start, false);
+            if (Changed != null) Changed();
         }
 
         public void Stop(bool finished)
         {
             bool was = Active;
             if (was) Logger.Log(finished ? "reader finished" : "reader stopped");
-            Active = false; Paused = false;
+            Active = false; Paused = false; _lastIndex = -1;
             try { _engine.Resume(); } catch { }
             _engine.Stop();
             if (was && Changed != null) Changed();
-            if (was && finished && Finished != null) Finished();
-            if (was && !finished && Finished != null) Finished();
+            if (was && Finished != null) Finished();
         }
     }
 
-    // Floating bar shown while reading: draggable anywhere, hideable, speed menu, expandable full sentence.
+    // Floating bar shown while reading: draggable anywhere, hideable, speed menu, expandable full text
+    // with a soft highlight that follows the spoken word.
     public sealed class ReaderBar : Form
     {
         [System.Runtime.InteropServices.DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
@@ -161,8 +225,10 @@ namespace SesliOkuma
         readonly FlatButton _hide = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(30, 34), Text = "\uE921" };
         readonly FlatButton _close = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(30, 34), Text = "\uE711" };
         readonly Label _text = new Label { AutoSize = false, TextAlign = ContentAlignment.MiddleLeft, BackColor = Color.Transparent, AutoEllipsis = true };
-        readonly Label _full = new Label { AutoSize = false, BackColor = Color.Transparent };
-        const int W = 560, BaseH = 56;
+        readonly RichTextBox _full = new RichTextBox();
+        const int W = 560, BaseH = 56, FullH = 168;
+        int _hlStart = -1, _hlLen;
+        string _loadedText = "";
         public event EventHandler HideRequested;
 
         public ReaderBar(Reader reader, AppSettings settings, Action rateChanged)
@@ -181,7 +247,9 @@ namespace SesliOkuma
             _close.Location = new Point(W - 40, 11);
             _hide.Location = new Point(W - 40 - 32, 11);
             _expand.Location = new Point(W - 40 - 64, 11);
-            _full.Font = Theme.Body; _full.ForeColor = Theme.Text; _full.Visible = false;
+            _full.ReadOnly = true; _full.BorderStyle = BorderStyle.None; _full.BackColor = Theme.Bg; _full.ForeColor = Theme.Text;
+            _full.Font = Theme.Body; _full.WordWrap = true; _full.ScrollBars = RichTextBoxScrollBars.Vertical; _full.TabStop = false;
+            _full.Visible = false; _full.Cursor = Cursors.Default;
             Controls.AddRange(new Control[] { _back, _pause, _skip, _speed, _text, _expand, _hide, _close, _full });
 
             _pause.Click += delegate { _reader.TogglePause(); };
@@ -194,9 +262,9 @@ namespace SesliOkuma
             Tips.Set(_back, L.T("Previous")); Tips.Set(_skip, L.T("Next")); Tips.Set(_close, L.T("Stop"));
             Tips.Set(_hide, L.T("HideBar")); Tips.Set(_speed, L.T("SpeedTip"));
 
-            // drag from anywhere that is not a button
-            MouseDown += Drag; _text.MouseDown += Drag; _full.MouseDown += Drag;
+            MouseDown += Drag; _text.MouseDown += Drag;
             _reader.Changed += Sync;
+            _reader.Position += SyncHighlight;
             Sync();
         }
 
@@ -242,31 +310,70 @@ namespace SesliOkuma
             if (Visible) { _settings.BarX = Location.X; _settings.BarY = Location.Y; }
         }
 
+        static Color Soft(Color a, Color b, float t)
+        {
+            return Color.FromArgb((int)(a.R * t + b.R * (1 - t)), (int)(a.G * t + b.G * (1 - t)), (int)(a.B * t + b.B * (1 - t)));
+        }
+
         void Sync()
         {
             if (IsDisposed) return;
             _pause.Text = _reader.Paused ? "\uE768" : "\uE769";
             Tips.Set(_pause, _reader.Paused ? L.T("Resume") : L.T("Pause"));
             _speed.Text = (1.0 + _settings.Rate * 0.1).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "×";
-            _text.Text = _reader.Current;
             bool exp = _settings.BarExpanded;
             _expand.Text = exp ? "\uE70D" : "\uE70E";
             Tips.Set(_expand, L.T(exp ? "CollapseTip" : "ExpandTip"));
             _text.Visible = !exp;
+            _full.Visible = exp;
             int h = BaseH;
             if (exp)
             {
+                if (_loadedText != _reader.FullText)
+                {
+                    _loadedText = _reader.FullText;
+                    _full.Text = _loadedText;
+                    _hlStart = -1; _hlLen = 0;
+                }
                 int th;
                 using (var g = CreateGraphics())
-                    th = Math.Min(150, Math.Max(22, TextRenderer.MeasureText(g, _reader.Current, Theme.Body, new Size(W - 28, 1000), TextFormatFlags.WordBreak).Height));
-                _full.SetBounds(14, BaseH - 4, W - 28, th);
-                _full.Text = _reader.Current;
-                _full.Visible = true;
-                h = BaseH + th + 8;
+                    th = Math.Min(FullH, Math.Max(28, TextRenderer.MeasureText(g, _loadedText, Theme.Body, new Size(W - 28, 2000), TextFormatFlags.WordBreak).Height + 12));
+                _full.SetBounds(14, BaseH - 6, W - 28, th);
+                h = BaseH + th + 6;
             }
-            else _full.Visible = false;
             if (ClientSize.Height != h) ClientSize = new Size(W, h);
+            if (!exp) _text.Text = _reader.CurrentSentence;
             Invalidate();
+        }
+
+        // Soft highlight of the word being spoken; also keeps the collapsed label and progress fresh.
+        void SyncHighlight()
+        {
+            if (IsDisposed || !_reader.Active) return;
+            if (_settings.BarExpanded && _full.Visible && _loadedText.Length > 0)
+            {
+                int start = _reader.CharIndex;
+                int len = Math.Max(_reader.WordLength, 1);
+                if (start != _hlStart)
+                {
+                    if (_hlStart >= 0 && _hlStart < _loadedText.Length)
+                    {
+                        _full.Select(Math.Max(0, _hlStart - 1), Math.Min(_hlLen + 2, _loadedText.Length - Math.Max(0, _hlStart - 1)));
+                        _full.SelectionBackColor = _full.BackColor;
+                    }
+                    if (start < _loadedText.Length)
+                    {
+                        len = Math.Min(len, _loadedText.Length - start);
+                        _full.Select(start, len);
+                        _full.SelectionBackColor = Soft(Theme.Accent, Theme.Bg, 0.22f);
+                        _hlStart = start; _hlLen = len;
+                        _full.Select(start, 0);
+                        _full.ScrollToCaret();
+                    }
+                }
+            }
+            else if (!_settings.BarExpanded) _text.Text = _reader.CurrentSentence;
+            Invalidate(new Rectangle(0, Height - 6, Width, 6));
         }
 
         void Drag(object s, MouseEventArgs e)
@@ -281,7 +388,7 @@ namespace SesliOkuma
             base.OnPaint(e);
             Theme.Prepare(e.Graphics);
             using (var pen = new Pen(Theme.Border)) e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
-            float frac = _reader.Count > 0 ? (_reader.Index + 1) / (float)_reader.Count : 0f;
+            float frac = (float)_reader.Fraction;
             using (var b = new SolidBrush(Theme.Track)) e.Graphics.FillRectangle(b, 12, Height - 5, Width - 24, 2);
             using (var b = new SolidBrush(Theme.Accent)) e.Graphics.FillRectangle(b, 12, Height - 5, (Width - 24) * frac, 2);
         }

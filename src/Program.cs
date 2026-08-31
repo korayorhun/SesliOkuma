@@ -97,7 +97,7 @@ namespace SesliOkuma
             _gesture.Interval = 40;
             _gesture.Tick += GestureTick;
 
-            _pulse.Interval = 150;
+            _pulse.Interval = 120;
             _pulse.Tick += delegate
             {
                 Reader.Tick();
@@ -562,7 +562,7 @@ namespace SesliOkuma
             _barHidden = false;
             Reader.Start(text, v);
             Settings.CountWords(text);
-            Logger.Log("read " + source + " " + (primary ? Settings.PrimaryLang : "other") + " len=" + text.Length + " sentences=" + Reader.Count + " app=" + ForegroundApp());
+            Logger.Log("read " + source + " " + (primary ? Settings.PrimaryLang : "other") + " len=" + text.Length + " sentences=" + Reader.SentenceCount + " app=" + ForegroundApp());
         }
         protected override void OnFormClosed(FormClosedEventArgs e)
         {

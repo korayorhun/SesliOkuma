@@ -18,7 +18,7 @@ namespace SesliOkuma
         public bool HoverRead = false;
         public int BarX = -1;
         public int BarY = -1;
-        public bool BarExpanded = false;
+        public bool BarExpanded = true;
         public long WordsTotal = 0;
         public long WordsToday = 0;
         public string StatsDay = "";

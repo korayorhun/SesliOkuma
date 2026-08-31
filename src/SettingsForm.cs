@@ -270,7 +270,7 @@ namespace SesliOkuma
             if (showBar)
             {
                 _barCard.Title = L.T("ReadingNow");
-                string cur = _app.Reader.Current; if (cur.Length > 60) cur = cur.Substring(0, 60) + "…";
+                string cur = _app.Reader.CurrentSentence; if (cur.Length > 60) cur = cur.Substring(0, 60) + "…";
                 _barCard.Text2 = cur;
                 _barCard.SetIdle();
                 _barCard.SetBounds(Pad, y, W - 2 * Pad, CardH); y += CardH + Gap;
