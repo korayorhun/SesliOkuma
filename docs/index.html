@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sesli Okuma — free read-aloud for Windows</title>
+<meta name="description" content="Free, open-source Windows tray tool: select text in any app, press Ctrl+Alt+S, hear it read aloud with natural voices. Translation, word highlighting, 8 languages. Seçili metni her uygulamada sesli okur.">
+<meta property="og:title" content="Sesli Okuma — read aloud, anywhere in Windows">
+<meta property="og:description" content="Select text in any app, press one shortcut, hear it read aloud with natural voices. Free &amp; open source.">
+<meta property="og:image" content="https://korayorhun.github.io/SesliOkuma/hero.png">
+<link rel="icon" href="https://raw.githubusercontent.com/korayorhun/SesliOkuma/main/assets/SesliOkuma.ico">
+<style>
+:root{
+  --bg:#f6f7fb; --card:#ffffff; --text:#1b1d24; --muted:#6b7080; --accent:#3b6cff; --border:#e1e4ec;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#16171d; --card:#1f2129; --text:#edeef2; --muted:#8a8fa3; --accent:#6c8cff; --border:#2e3140; }
+}
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.6 "Segoe UI",system-ui,sans-serif;padding:0 16px}
+.wrap{max-width:880px;margin:0 auto;padding:48px 0 64px}
+h1{font-size:2.2em;margin:.2em 0 .1em}
+h2{margin-top:2.2em}
+.tag{color:var(--muted);font-size:1.1em;margin:0 0 1.4em}
+.btns{display:flex;gap:12px;flex-wrap:wrap;margin:24px 0}
+.btn{display:inline-block;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:600}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.ghost{border:1px solid var(--border);color:var(--text)}
+img.shot{max-width:100%;border-radius:12px;border:1px solid var(--border);display:block;margin:18px auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:18px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.card b{display:block;margin-bottom:4px}
+.small{color:var(--muted);font-size:.9em}
+kbd{background:var(--card);border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;padding:1px 7px;font-family:inherit;font-size:.9em}
+a{color:var(--accent)}
+hr{border:none;border-top:1px solid var(--border);margin:42px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Sesli Okuma</h1>
+  <p class="tag">Select text in <b>any</b> Windows app, press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> — hear it read aloud with natural voices. Free &amp; open source (MIT).</p>
+  <div class="btns">
+    <a class="btn primary" href="https://github.com/korayorhun/SesliOkuma/releases/latest">⬇ Download for Windows</a>
+    <a class="btn ghost" href="https://github.com/korayorhun/SesliOkuma">GitHub</a>
+  </div>
+  <p class="small">Windows 10/11 · ~1 MB · no account, no ads, no telemetry</p>
+  <img class="shot" src="hero.png" alt="Sesli Okuma reading a selection in Windows" width="880">
+
+  <div class="grid">
+    <div class="card"><b>Works everywhere</b>Browsers, Office, PDF readers, IDEs, chat apps — one global shortcut.</div>
+    <div class="card"><b>Natural voices</b>One-click install of Microsoft's online neural voices (Turkish, English and 70+ more).</div>
+    <div class="card"><b>Follow along</b>A minimal bar shows the text with soft word highlighting, pause, sentence skip and speed — text size adjustable.</div>
+    <div class="card"><b>Translate &amp; read</b><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> translates the selection to your language and reads it — free, no account.</div>
+    <div class="card"><b>Save as audio</b>Export any selection as a WAV file from the tray menu.</div>
+    <div class="card"><b>8 UI languages</b>English, Türkçe, 中文, हिन्दी, Español, Français, العربية, Português.</div>
+  </div>
+
+  <img class="shot" src="readerbar.png" alt="Mini reading bar with word highlighting" width="560">
+  <img class="shot" src="panel-en.png" alt="Settings panel" width="360">
+
+  <hr>
+
+  <h1 id="tr">Türkçe</h1>
+  <p class="tag">Herhangi bir Windows uygulamasında metni seçin, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd>'ye basın — doğal seslerle okunsun. Tamamen ücretsiz ve açık kaynak (MIT).</p>
+  <div class="btns">
+    <a class="btn primary" href="https://github.com/korayorhun/SesliOkuma/releases/latest">⬇ Windows için indir</a>
+  </div>
+  <div class="grid">
+    <div class="card"><b>Her yerde çalışır</b>Tarayıcı, Office, PDF, IDE, sohbet — tek küresel kısayol.</div>
+    <div class="card"><b>Doğal sesler</b>Microsoft'un çevrimiçi doğal sesleri (Emel, Ahmet…) tek tıkla kurulur.</div>
+    <div class="card"><b>Takip ederek dinleyin</b>Mini çubukta metin, yumuşak kelime vurgusu, duraklat, cümle atlama ve hız; yazı boyutu ayarlanabilir.</div>
+    <div class="card"><b>Çevir &amp; oku</b><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> seçimi dilinize çevirir ve okur — ücretsiz, hesap gerekmez.</div>
+    <div class="card"><b>Ses dosyası kaydet</b>Seçimi WAV olarak dışa aktarın.</div>
+    <div class="card"><b>Panoyu ve odağı korur</b>Çalışmanızı asla bölmez: odak çalmaz, panonuzu geri yükler.</div>
+  </div>
+
+  <p class="small" style="margin-top:40px">© Koray Orhun · MIT License · <a href="https://github.com/korayorhun/SesliOkuma/issues">Feedback</a> · <a href="https://github.com/sponsors/korayorhun">♥ Sponsor</a></p>
+</div>
+</body>
+</html>
