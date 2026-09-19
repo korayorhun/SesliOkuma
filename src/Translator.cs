@@ -57,18 +57,15 @@ namespace SesliOkuma
             foreach (string chunk in chunks)
             {
                 string url = "https://api.mymemory.translated.net/get?q=" + Uri.EscapeDataString(chunk) + "&langpair=Autodetect|" + MyMemoryTarget(targetLang2);
-                var req = (HttpWebRequest)WebRequest.Create(url);
-                req.Timeout = 15000; req.UserAgent = UserAgent;
-                string json;
-                using (var resp = (HttpWebResponse)req.GetResponse())
-                using (var sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8)) json = sr.ReadToEnd();
-                var root = ser.Deserialize<Dictionary<string, object>>(json);
-                object qf;
-                if (root.TryGetValue("quotaFinished", out qf) && qf is bool && (bool)qf) throw new InvalidOperationException(L.T("FreeQuota"));
-                object statusObj;
-                int status = root.TryGetValue("responseStatus", out statusObj) ? Convert.ToInt32(statusObj) : 200;
-                if (status == 429) throw new InvalidOperationException(L.T("FreeQuota"));
-                if (status != 200) throw new InvalidOperationException("MyMemory " + status);
+                Dictionary<string, object> root;
+                // The service occasionally returns a transient error status; retry each chunk once.
+                try { root = FetchChunk(ser, url); }
+                catch (InvalidOperationException ex)
+                {
+                    if (ex.Message == L.T("FreeQuota")) throw;
+                    System.Threading.Thread.Sleep(700);
+                    root = FetchChunk(ser, url);
+                }
                 var data = (Dictionary<string, object>)root["responseData"];
                 if (sb.Length > 0) sb.Append(' ');
                 sb.Append(Convert.ToString(data["translatedText"]));
@@ -76,6 +73,23 @@ namespace SesliOkuma
                 if (detected.Length == 0 && data.TryGetValue("detectedLanguage", out det) && det != null) detected = Convert.ToString(det).ToUpperInvariant();
             }
             return sb.ToString();
+        }
+
+        static Dictionary<string, object> FetchChunk(JavaScriptSerializer ser, string url)
+        {
+            var req = (HttpWebRequest)WebRequest.Create(url);
+            req.Timeout = 15000; req.UserAgent = UserAgent;
+            string json;
+            using (var resp = (HttpWebResponse)req.GetResponse())
+            using (var sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8)) json = sr.ReadToEnd();
+            var root = ser.Deserialize<Dictionary<string, object>>(json);
+            object qf;
+            if (root.TryGetValue("quotaFinished", out qf) && qf is bool && (bool)qf) throw new InvalidOperationException(L.T("FreeQuota"));
+            object statusObj;
+            int status = root.TryGetValue("responseStatus", out statusObj) ? Convert.ToInt32(statusObj) : 200;
+            if (status == 429) throw new InvalidOperationException(L.T("FreeQuota"));
+            if (status != 200) throw new InvalidOperationException("MyMemory " + status);
+            return root;
         }
 
         static string DeepL(string apiKey, string text, string target, out string detected)

@@ -240,13 +240,15 @@ namespace SesliOkuma
         readonly Action _rateChanged;
         bool _editable, _userTouchedText;
         public event EventHandler CloseRequested;
-        public event Action<string, int> PlayRequested; // play while idle, or paused after touching the text: text + caret offset
+        public event Action<string, int> PlayRequested;
+        public event Action<string> TranslateRequested;    // translate & read the bar text // play while idle, or paused after touching the text: text + caret offset
         readonly FlatButton _pause = new FlatButton { IconGlyph = true, Borderless = true, Accent = true, Size = new Size(38, 34) };
         readonly FlatButton _back = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(32, 34), Text = "\uE892" };
         readonly FlatButton _skip = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(32, 34), Text = "\uE893" };
         readonly FlatButton _speed = new FlatButton { Borderless = true, Size = new Size(48, 34) };
         readonly FlatButton _fontMinus = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE8E7" };
         readonly FlatButton _fontPlus = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE8E8" };
+        readonly FlatButton _translate = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE774" };
         readonly FlatButton _expand = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE70E" };
         readonly FlatButton _hide = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE921" };
         readonly FlatButton _close = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE711" };
@@ -268,7 +270,7 @@ namespace SesliOkuma
             _full.ReadOnly = true; _full.HideSelection = true; _full.BorderStyle = BorderStyle.None; _full.BackColor = Theme.Bg; _full.ForeColor = Theme.Text;
             _full.Font = Theme.Reading; _full.WordWrap = true; _full.ScrollBars = RichTextBoxScrollBars.None; _full.TabStop = false;
             _full.Visible = false; _full.Cursor = Cursors.Default;
-            Controls.AddRange(new Control[] { _back, _pause, _skip, _speed, _fontMinus, _fontPlus, _text, _expand, _hide, _close, _full });
+            Controls.AddRange(new Control[] { _back, _pause, _skip, _speed, _fontMinus, _fontPlus, _translate, _text, _expand, _hide, _close, _full });
 
             _pause.Click += delegate
             {
@@ -287,9 +289,14 @@ namespace SesliOkuma
             _speed.Click += delegate { ShowSpeedMenu(); };
             _fontMinus.Click += delegate { BumpFont(-0.75f); };
             _fontPlus.Click += delegate { BumpFont(0.75f); };
+            _translate.Click += delegate
+            {
+                string t = _settings.BarExpanded ? _full.Text : _loadedText;
+                if (t != null && t.Trim().Length > 0 && TranslateRequested != null) TranslateRequested(t);
+            };
             Tips.Set(_back, L.T("Previous")); Tips.Set(_skip, L.T("Next")); Tips.Set(_close, L.T("Stop"));
             Tips.Set(_hide, L.T("HideBar")); Tips.Set(_speed, L.T("SpeedTip"));
-            Tips.Set(_fontMinus, L.T("FontSmaller")); Tips.Set(_fontPlus, L.T("FontLarger"));
+            Tips.Set(_fontMinus, L.T("FontSmaller")); Tips.Set(_fontPlus, L.T("FontLarger")); Tips.Set(_translate, L.T("TranslateRead"));
 
             MouseDown += Drag; _text.MouseDown += Drag;
             _full.GotFocus += delegate { if (!_editable) HideCaret(_full.Handle); };
@@ -392,7 +399,7 @@ namespace SesliOkuma
             Tips.Set(_expand, L.T(exp ? "CollapseTip" : "ExpandTip"));
             _text.Visible = !exp;
             _full.Visible = exp;
-            _fontMinus.Visible = exp; _fontPlus.Visible = exp;
+            _fontMinus.Visible = exp; _fontPlus.Visible = exp; _translate.Visible = exp;
 
             int h;
             if (exp)
@@ -416,6 +423,7 @@ namespace SesliOkuma
                 _speed.Location = new Point(14, rowY);
                 _fontMinus.Location = new Point(66, rowY);
                 _fontPlus.Location = new Point(94, rowY);
+                _translate.Location = new Point(126, rowY);
                 _expand.Location = new Point(W - 14 - 28 - 4 - 28 - 4 - 28, rowY);
                 _hide.Location = new Point(W - 14 - 28 - 4 - 28, rowY);
                 _close.Location = new Point(W - 14 - 28, rowY);

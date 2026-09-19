@@ -20,6 +20,7 @@ namespace SesliOkuma
         readonly ActionCard _naturalCard = new ActionCard();
         readonly ActionCard _barCard = new ActionCard();
         readonly HotkeyBox _hotkey = new HotkeyBox();
+        readonly Label _trHint = new Label { AutoSize = false, BackColor = Color.Transparent, Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleLeft };
         readonly CaptionLink _primaryCaption = new CaptionLink();
         readonly VoicePicker _primaryPicker = new VoicePicker();
         readonly VoicePicker _otherPicker = new VoicePicker();
@@ -128,7 +129,13 @@ namespace SesliOkuma
             };
             _hotkey.NeedModifier += delegate { Flash(L.T("HotkeyNeedMod")); };
             _body.Controls.Add(_hotkey);
-            y += Row + Gap + 8;
+            y += Row + 2;
+            _trHint.Font = Theme.Small; _trHint.ForeColor = Theme.Muted;
+            _trHint.SetBounds(Pad + 2, y, W - 2 * Pad, 18);
+            _trHint.Click += delegate { if (!_app.Settings.AdvancedOpen) { _app.Settings.AdvancedOpen = true; _app.Settings.Save(); Relayout(); } };
+            Tips.Set(_trHint, L.T("TranslateHotkey"));
+            _body.Controls.Add(_trHint);
+            y += 18 + Gap + 2;
 
             _primaryCaption.Caption = L.T("Primary");
             _primaryCaption.SetBounds(Pad, y, W - 2 * Pad, 22);
@@ -429,6 +436,7 @@ namespace SesliOkuma
             foreach (var v in _app.Engine.Voices) if (v.Lang2 == primary) { primaryName = v.LanguageName; break; }
             _primaryCaption.Value = primaryName; _primaryCaption.Invalidate();
             _hotkey.Value = _app.Hotkey;
+            _trHint.Text = L.T("TranslateRead") + "  \u00b7  " + _app.TranslateHotkey;
             _trHotkey.Value = _app.TranslateHotkey;
             _key.Text = _app.Settings.DeepLKey;
             _rate.Value = (int)Math.Round(_app.Settings.Rate / 2.0);

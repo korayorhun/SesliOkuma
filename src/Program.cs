@@ -223,6 +223,7 @@ namespace SesliOkuma
                     _bar.HideRequested += delegate { _barHidden = true; SyncBar(); };
                     _bar.CloseRequested += delegate { _barSession = false; SyncBar(); };
                     _bar.PlayRequested += delegate (string t, int off) { ReadEdited(t, off); };
+                    _bar.TranslateRequested += delegate (string t) { TranslateText(t); };
                 }
                 if (!_bar.Visible) { _bar.Place(); _bar.Show(); }
             }
@@ -343,6 +344,11 @@ namespace SesliOkuma
             Logger.Log("translate requested");
             string text = GrabText();
             if (text == null) { _tray.ShowBalloonTip(4000, L.T("TranslateRead"), L.T("NoTextToSave"), ToolTipIcon.Warning); return; }
+            TranslateText(text);
+        }
+
+        public void TranslateText(string text)
+        {
             Reader.Stop(false);
             if (_card == null || _card.IsDisposed) { _card = new TranslationCard(AppIcon); _card.PlayClicked += delegate { var v2 = Engine.BestFor(Settings.PrimaryLang) ?? PrimaryVoice; Reader.Start(_card.Translation, v2); }; }
             string targetName = L.NativeName(Settings.PrimaryLang) == Settings.PrimaryLang ? Settings.PrimaryLang.ToUpperInvariant() : L.NativeName(Settings.PrimaryLang);
@@ -355,7 +361,11 @@ namespace SesliOkuma
                     var v = Engine.BestFor(Settings.PrimaryLang) ?? PrimaryVoice;
                     Reader.Start(translated, v);
                 },
-                delegate (string err) { if (_card != null && !_card.IsDisposed) _card.Close(); _tray.ShowBalloonTip(6000, L.T("TranslateRead"), L.F("TranslateFailed", err), ToolTipIcon.Warning); });
+                delegate (string err)
+                {
+                    if (_card != null && !_card.IsDisposed) _card.SetContent("", targetName, text, L.F("TranslateFailed", err), false);
+                    else _tray.ShowBalloonTip(6000, L.T("TranslateRead"), L.F("TranslateFailed", err), ToolTipIcon.Warning);
+                });
         }
 
         public void ApplyLanguage(string code)
