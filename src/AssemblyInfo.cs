@@ -6,6 +6,6 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyProduct("Sesli Okuma")]
 [assembly: AssemblyCompany("Koray Orhun")]
 [assembly: AssemblyCopyright("Copyright © 2026 Koray Orhun. MIT License.")]
-[assembly: AssemblyVersion("1.11.5.0")]
-[assembly: AssemblyFileVersion("1.11.5.0")]
+[assembly: AssemblyVersion("1.11.6.0")]
+[assembly: AssemblyFileVersion("1.11.6.0")]
 [assembly: ComVisible(false)]
