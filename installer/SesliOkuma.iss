@@ -1,6 +1,6 @@
 ; Inno Setup script for Sesli Okuma (per-user install, no admin rights needed)
 #define MyAppName "Sesli Okuma"
-#define MyAppVersion "1.11.3"
+#define MyAppVersion "1.11.4"
 #define MyAppPublisher "Koray Orhun"
 #define MyAppURL "https://github.com/korayorhun/SesliOkuma"
 #define MyAppExeName "SesliOkuma.exe"
