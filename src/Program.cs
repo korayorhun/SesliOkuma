@@ -417,6 +417,14 @@ namespace SesliOkuma
             base.WndProc(ref m);
         }
 
+        static readonly string[] CopyFirstApps = { "Code", "Cursor", "VSCodium", "windsurf", "Code - Insiders" };
+        static bool IsCopyFirstApp()
+        {
+            string app = ForegroundApp();
+            foreach (string a in CopyFirstApps) if (string.Equals(app, a, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
         static string ForegroundApp()
         {
             try { uint pid; GetWindowThreadProcessId(GetForegroundWindow(), out pid); return System.Diagnostics.Process.GetProcessById((int)pid).ProcessName; }
@@ -448,7 +456,8 @@ namespace SesliOkuma
         {
             string old = null;
             try { if (Clipboard.ContainsText()) old = Clipboard.GetText(); } catch { }
-            try { Clipboard.Clear(); } catch { }
+            // Snapshot the sequence BEFORE injecting keys; Electron apps write the clipboard asynchronously.
+            uint seq = GetClipboardSequenceNumber();
             // Release whatever modifiers the hotkey holds down, then send a clean Ctrl+C.
             keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
             keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
@@ -458,23 +467,21 @@ namespace SesliOkuma
             keybd_event(VK_C, 0, 0, UIntPtr.Zero);
             keybd_event(VK_C, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
             keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-            uint seq = GetClipboardSequenceNumber();
             string text = null;
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            while (sw.ElapsedMilliseconds < 350)
+            while (sw.ElapsedMilliseconds < 900)
             {
                 Thread.Sleep(15);
                 if (GetClipboardSequenceNumber() == seq) continue;
-                try { if (Clipboard.ContainsText()) text = Clipboard.GetText(); } catch { }
+                for (int r = 0; r < 5 && (text == null || text.Trim().Length == 0); r++)
+                {
+                    try { if (Clipboard.ContainsText()) text = Clipboard.GetText(); } catch { }
+                    if (text == null || text.Trim().Length == 0) Thread.Sleep(25);
+                }
                 break;
             }
-            if (old != null) { try { Clipboard.SetDataObject(old, true, 10, 100); } catch { } }
-            if (text == null || text.Trim().Length == 0)
-            {
-                // Clipboard may have been busy: read back what we restored so the final fallback still works.
-                try { if (Clipboard.ContainsText()) text = Clipboard.GetText(); } catch { }
-                if (text != null && old != null && text == old) return null;   // caller falls through to the clipboard stage anyway
-            }
+            if (GetClipboardSequenceNumber() == seq) return null;              // nothing was copied; clipboard untouched, no restore needed
+            if (old != null && text != old) { try { Clipboard.SetDataObject(old, true, 10, 100); } catch { } }
             return (text != null && text.Trim().Length > 0) ? text : null;
         }
 
@@ -519,8 +526,11 @@ namespace SesliOkuma
                 if (!Engine.IsAvailable) { Logger.Log("no voice"); return; }
                 if (Engine.Voices.Count == 0) { Engine.RefreshVoices(); EnsureDefaults(); }
                 var sw = System.Diagnostics.Stopwatch.StartNew();
-                string source = "uia";
-                string text = GetSelectionViaUia(); long tUia = sw.ElapsedMilliseconds;
+                // Electron editors (VS Code family) expose only a small accessibility window through UIA,
+                // so a large selection comes back truncated there; go straight to the copy path.
+                bool preferCopy = IsCopyFirstApp();
+                string source = preferCopy ? "copy!" : "uia";
+                string text = preferCopy ? GetSelectionViaCopy() : GetSelectionViaUia(); long tUia = sw.ElapsedMilliseconds;
                 if (text == null) { source = "copy"; text = GetSelectionViaCopy(); }
                 long tCopy = sw.ElapsedMilliseconds;
                 if (text == null) { source = "pointer"; text = GetParagraphUnderMouse(); }
@@ -535,7 +545,8 @@ namespace SesliOkuma
 
         string GrabText()
         {
-            string src = "uia"; string text = GetSelectionViaUia();
+            bool preferCopy = IsCopyFirstApp();
+            string src = preferCopy ? "copy!" : "uia"; string text = preferCopy ? GetSelectionViaCopy() : GetSelectionViaUia();
             if (text == null) { src = "copy"; text = GetSelectionViaCopy(); }
             if (text == null) { src = "pointer"; text = GetParagraphUnderMouse(); }
             if (text == null) { src = "clipboard"; text = GetClipboardText(); }

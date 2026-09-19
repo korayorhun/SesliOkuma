@@ -94,8 +94,8 @@ namespace SesliOkuma
             int cut = -1;
             if (leadIn && rest.Length > 150)
             {
-                foreach (char sep in new[] { ',', ';', ':', '.', '!', '?' }) { int i = rest.IndexOf(sep, 20); if (i > 0 && i < 90 && (cut < 0 || i < cut)) cut = i; }
-                if (cut < 0) { int sp = rest.IndexOf(' ', 60); if (sp > 0 && sp < 110) cut = sp; }
+                foreach (char sep in new[] { ',', ';', ':', '.', '!', '?' }) { int i = rest.IndexOf(sep, 16); if (i > 0 && i < 64 && (cut < 0 || i < cut)) cut = i; }
+                if (cut < 0) { int sp = rest.IndexOf(' ', 40); if (sp > 0 && sp < 72) cut = sp; }
             }
             Logger.Log("reader start off=" + offset + " len=" + rest.Length + " lead=" + (cut > 0 ? cut : 0));
             try
@@ -161,7 +161,11 @@ namespace SesliOkuma
             if (!Paused)
             {
                 bool speaking = _engine.IsSpeaking;
-                if (speaking) { _sawSpeaking = true; _lastSpeaking = DateTime.UtcNow; }
+                if (speaking)
+                {
+                    if (!_sawSpeaking) Logger.Log("time-to-audio " + (int)(DateTime.UtcNow - _launched).TotalMilliseconds + " ms");
+                    _sawSpeaking = true; _lastSpeaking = DateTime.UtcNow;
+                }
                 else
                 {
                     double idle = (DateTime.UtcNow - _lastSpeaking).TotalMilliseconds;
