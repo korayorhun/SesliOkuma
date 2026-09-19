@@ -12,6 +12,13 @@ namespace SesliOkuma
         public static bool Dark, HighContrast;
         public static Color Bg, Card, CardHover, Border, Text, Muted, Accent, AccentHover, AccentText, Track, AccentSoft;
         public static Font Body, Small, Title, Caption, Icon, Mono;
+        public static Font Reading;   // reader body text (VS editor font when available)
+
+        public static void SetReadingSize(float size)
+        {
+            var f = new Font("Cascadia Code", size);
+            Reading = string.Equals(f.Name, "Cascadia Code", StringComparison.OrdinalIgnoreCase) ? f : new Font("Segoe UI", size);
+        }
 
         public static void Load()
         {
@@ -45,6 +52,7 @@ namespace SesliOkuma
             Title = new Font("Segoe UI Semibold", 15f);
             Mono = new Font("Segoe UI Semibold", 10.5f);
             Icon = new Font("Segoe MDL2 Assets", 10f);
+            SetReadingSize(11.25f);
         }
 
         public static bool TaskbarIsDark()

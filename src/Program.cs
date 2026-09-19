@@ -69,6 +69,7 @@ namespace SesliOkuma
             Text = HostTitle;
 
             Theme.Load();
+            Theme.SetReadingSize(Settings.FontSize);
             L.Lang = Settings.Language.Length > 0 ? Settings.Language : L.DetectSystemLanguage();
             BuildIcons();
             Engine.RefreshVoices();

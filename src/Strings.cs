@@ -696,6 +696,7 @@ namespace SesliOkuma
             all["en"]["Pause"] = "Pause";
             all["en"]["Resume"] = "Resume";
             all["en"]["SpeedTip"] = "Speed";
+            all["en"]["FontSmaller"] = "Smaller text"; all["en"]["FontLarger"] = "Larger text";
             all["hi"]["SlightlySlow"] = "थोड़ा धीमा";
             all["hi"]["SlightlyFast"] = "थोड़ा तेज़";
             all["hi"]["Listen"] = "सुनें";
@@ -707,6 +708,7 @@ namespace SesliOkuma
             all["hi"]["Pause"] = "रोकें";
             all["hi"]["Resume"] = "जारी रखें";
             all["hi"]["SpeedTip"] = "गति";
+            all["hi"]["FontSmaller"] = "पाठ छोटा करें"; all["hi"]["FontLarger"] = "पाठ बड़ा करें";
             all["fr"]["SlightlySlow"] = "Un peu lent";
             all["fr"]["SlightlyFast"] = "Un peu rapide";
             all["fr"]["Listen"] = "Écouter";
@@ -718,6 +720,7 @@ namespace SesliOkuma
             all["fr"]["Pause"] = "Pause";
             all["fr"]["Resume"] = "Reprendre";
             all["fr"]["SpeedTip"] = "Vitesse";
+            all["fr"]["FontSmaller"] = "Réduire le texte"; all["fr"]["FontLarger"] = "Agrandir le texte";
             all["tr"]["SlightlySlow"] = "Biraz yavaş";
             all["tr"]["SlightlyFast"] = "Biraz hızlı";
             all["tr"]["Listen"] = "Dinle";
@@ -729,6 +732,7 @@ namespace SesliOkuma
             all["tr"]["Pause"] = "Duraklat";
             all["tr"]["Resume"] = "Devam";
             all["tr"]["SpeedTip"] = "Hız";
+            all["tr"]["FontSmaller"] = "Yazıyı küçült"; all["tr"]["FontLarger"] = "Yazıyı büyüt";
             all["ar"]["SlightlySlow"] = "أبطأ قليلاً";
             all["ar"]["SlightlyFast"] = "أسرع قليلاً";
             all["ar"]["Listen"] = "استماع";
@@ -740,6 +744,7 @@ namespace SesliOkuma
             all["ar"]["Pause"] = "إيقاف مؤقت";
             all["ar"]["Resume"] = "متابعة";
             all["ar"]["SpeedTip"] = "السرعة";
+            all["ar"]["FontSmaller"] = "تصغير النص"; all["ar"]["FontLarger"] = "تكبير النص";
             all["es"]["SlightlySlow"] = "Algo lento";
             all["es"]["SlightlyFast"] = "Algo rápido";
             all["es"]["Listen"] = "Escuchar";
@@ -751,6 +756,7 @@ namespace SesliOkuma
             all["es"]["Pause"] = "Pausa";
             all["es"]["Resume"] = "Continuar";
             all["es"]["SpeedTip"] = "Velocidad";
+            all["es"]["FontSmaller"] = "Reducir texto"; all["es"]["FontLarger"] = "Ampliar texto";
             all["pt"]["SlightlySlow"] = "Um pouco lento";
             all["pt"]["SlightlyFast"] = "Um pouco rápido";
             all["pt"]["Listen"] = "Ouvir";
@@ -762,6 +768,7 @@ namespace SesliOkuma
             all["pt"]["Pause"] = "Pausar";
             all["pt"]["Resume"] = "Continuar";
             all["pt"]["SpeedTip"] = "Velocidade";
+            all["pt"]["FontSmaller"] = "Diminuir texto"; all["pt"]["FontLarger"] = "Aumentar texto";
             all["zh"]["SlightlySlow"] = "稍慢";
             all["zh"]["SlightlyFast"] = "稍快";
             all["zh"]["Listen"] = "试听";
@@ -773,6 +780,7 @@ namespace SesliOkuma
             all["zh"]["Pause"] = "暂停";
             all["zh"]["Resume"] = "继续";
             all["zh"]["SpeedTip"] = "速度";
+            all["zh"]["FontSmaller"] = "缩小文字"; all["zh"]["FontLarger"] = "放大文字";
         }
 
         static void AddFreeTranslate(Dictionary<string, Dictionary<string, string>> all)

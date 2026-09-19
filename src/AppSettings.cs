@@ -23,6 +23,7 @@ namespace SesliOkuma
         public long WordsToday = 0;
         public string StatsDay = "";
         public int Rate = 0;
+        public float FontSize = 11.25f;
         public bool AutoUpdate = true;
         public bool ShowReaderBar = true;
         public string SkipVersion = "";
@@ -71,6 +72,7 @@ namespace SesliOkuma
                         case "WordsToday": long.TryParse(val, out s.WordsToday); break;
                         case "StatsDay": s.StatsDay = val; break;
                         case "Rate": { int r; if (int.TryParse(val, out r)) s.Rate = r; break; }
+                        case "FontSize": { float fs; if (float.TryParse(val, NumberStyles.Float, CultureInfo.InvariantCulture, out fs) && fs >= 8f && fs <= 20f) s.FontSize = fs; break; }
                         case "AutoUpdate": s.AutoUpdate = val != "0"; break;
                         case "ShowReaderBar": s.ShowReaderBar = val != "0"; break;
                         case "SkipVersion": s.SkipVersion = val; break;
@@ -98,7 +100,7 @@ namespace SesliOkuma
             {
                 File.WriteAllLines(FilePath, new[] {
                     "PrimaryVoice=" + PrimaryVoiceId, "OtherVoice=" + OtherVoiceId, "PrimaryLang=" + PrimaryLang,
-                    "Language=" + Language, "Hotkey=" + Hotkey, "TranslateHotkey=" + TranslateHotkey, "DeepLKey=" + DeepLKey, "AdvancedOpen=" + (AdvancedOpen ? "1" : "0"), "HoverRead=" + (HoverRead ? "1" : "0"), "BarX=" + BarX, "BarY=" + BarY, "BarExpanded=" + (BarExpanded ? "1" : "0"), "WordsTotal=" + WordsTotal, "WordsToday=" + WordsToday, "StatsDay=" + StatsDay, "Rate=" + Rate,
+                    "Language=" + Language, "Hotkey=" + Hotkey, "TranslateHotkey=" + TranslateHotkey, "DeepLKey=" + DeepLKey, "AdvancedOpen=" + (AdvancedOpen ? "1" : "0"), "HoverRead=" + (HoverRead ? "1" : "0"), "BarX=" + BarX, "BarY=" + BarY, "BarExpanded=" + (BarExpanded ? "1" : "0"), "WordsTotal=" + WordsTotal, "WordsToday=" + WordsToday, "StatsDay=" + StatsDay, "Rate=" + Rate, "FontSize=" + FontSize.ToString(CultureInfo.InvariantCulture),
                     "AutoUpdate=" + (AutoUpdate ? "1" : "0"), "ShowReaderBar=" + (ShowReaderBar ? "1" : "0"), "SkipVersion=" + SkipVersion, "LastUpdateCheck=" + LastUpdateCheck.ToString("o") });
             }
             catch (Exception ex) { Logger.Log("settings save: " + ex.Message); }

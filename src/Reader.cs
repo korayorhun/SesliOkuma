@@ -245,6 +245,8 @@ namespace SesliOkuma
         readonly FlatButton _back = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(32, 34), Text = "\uE892" };
         readonly FlatButton _skip = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(32, 34), Text = "\uE893" };
         readonly FlatButton _speed = new FlatButton { Borderless = true, Size = new Size(48, 34) };
+        readonly FlatButton _fontMinus = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE8E7" };
+        readonly FlatButton _fontPlus = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE8E8" };
         readonly FlatButton _expand = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE70E" };
         readonly FlatButton _hide = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE921" };
         readonly FlatButton _close = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE711" };
@@ -264,9 +266,9 @@ namespace SesliOkuma
 
             _text.Font = Theme.Body; _text.ForeColor = Theme.Text;
             _full.ReadOnly = true; _full.HideSelection = true; _full.BorderStyle = BorderStyle.None; _full.BackColor = Theme.Bg; _full.ForeColor = Theme.Text;
-            _full.Font = new Font("Segoe UI", 10.5f); _full.WordWrap = true; _full.ScrollBars = RichTextBoxScrollBars.None; _full.TabStop = false;
+            _full.Font = Theme.Reading; _full.WordWrap = true; _full.ScrollBars = RichTextBoxScrollBars.None; _full.TabStop = false;
             _full.Visible = false; _full.Cursor = Cursors.Default;
-            Controls.AddRange(new Control[] { _back, _pause, _skip, _speed, _text, _expand, _hide, _close, _full });
+            Controls.AddRange(new Control[] { _back, _pause, _skip, _speed, _fontMinus, _fontPlus, _text, _expand, _hide, _close, _full });
 
             _pause.Click += delegate
             {
@@ -283,15 +285,29 @@ namespace SesliOkuma
             _hide.Click += delegate { if (HideRequested != null) HideRequested(this, EventArgs.Empty); };
             _expand.Click += delegate { _settings.BarExpanded = !_settings.BarExpanded; _settings.Save(); Sync(); };
             _speed.Click += delegate { ShowSpeedMenu(); };
+            _fontMinus.Click += delegate { BumpFont(-0.75f); };
+            _fontPlus.Click += delegate { BumpFont(0.75f); };
             Tips.Set(_back, L.T("Previous")); Tips.Set(_skip, L.T("Next")); Tips.Set(_close, L.T("Stop"));
             Tips.Set(_hide, L.T("HideBar")); Tips.Set(_speed, L.T("SpeedTip"));
+            Tips.Set(_fontMinus, L.T("FontSmaller")); Tips.Set(_fontPlus, L.T("FontLarger"));
 
             MouseDown += Drag; _text.MouseDown += Drag;
             _full.GotFocus += delegate { if (!_editable) HideCaret(_full.Handle); };
             _full.MouseDown += delegate { if (!_reader.Active || _reader.Paused) { _userTouchedText = true; EnableEditing(); } };
             _full.KeyDown += delegate { if (_editable) _userTouchedText = true; };
+            _full.MouseWheel += delegate(object sn, MouseEventArgs me) { if ((ModifierKeys & Keys.Control) == Keys.Control) BumpFont(me.Delta > 0 ? 0.75f : -0.75f); };
             _reader.Changed += Sync;
             _reader.Position += SyncHighlight;
+            Sync();
+        }
+
+        void BumpFont(float delta)
+        {
+            float size = Math.Max(8.25f, Math.Min(16.5f, _settings.FontSize + delta));
+            if (size == _settings.FontSize) return;
+            _settings.FontSize = size; _settings.Save();
+            Theme.SetReadingSize(size);
+            _full.Font = Theme.Reading;
             Sync();
         }
 
@@ -376,6 +392,7 @@ namespace SesliOkuma
             Tips.Set(_expand, L.T(exp ? "CollapseTip" : "ExpandTip"));
             _text.Visible = !exp;
             _full.Visible = exp;
+            _fontMinus.Visible = exp; _fontPlus.Visible = exp;
 
             int h;
             if (exp)
@@ -397,6 +414,8 @@ namespace SesliOkuma
                 _pause.Location = new Point(cx - 19, rowY);
                 _skip.Location = new Point(cx + 19 + 4, rowY);
                 _speed.Location = new Point(14, rowY);
+                _fontMinus.Location = new Point(66, rowY);
+                _fontPlus.Location = new Point(94, rowY);
                 _expand.Location = new Point(W - 14 - 28 - 4 - 28 - 4 - 28, rowY);
                 _hide.Location = new Point(W - 14 - 28 - 4 - 28, rowY);
                 _close.Location = new Point(W - 14 - 28, rowY);
