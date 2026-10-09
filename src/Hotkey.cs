@@ -91,7 +91,7 @@ namespace SesliOkuma
         public string HintKey = "HotkeyHint";
         public HotkeyBox() { Height = 48; SetStyle(ControlStyles.Selectable, true); TabStop = true; }
 
-        public HotkeyDef Value { get { return _value; } set { _value = value; Invalidate(); } }
+        public HotkeyDef Value { get { return _value; } set { _value = value; Invalidate(); Text = value.ToString(); } }
 
         protected override void OnMouseClick(MouseEventArgs e)
         {

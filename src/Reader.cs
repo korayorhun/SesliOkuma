@@ -33,6 +33,7 @@ namespace SesliOkuma
         public event Action Changed;          // start/stop/pause state
         public event Action Position;         // word position advanced (highlight)
         public event Action Finished;
+        public static Action<bool> PauseAnnounce;   // accessibility mode: true = paused, false = resumed
 
         public Reader(SpeechEngine engine, Func<int> rate) { _engine = engine; _rate = rate; }
 
@@ -223,6 +224,7 @@ namespace SesliOkuma
             if (Paused) { Paused = false; _lastSpeaking = DateTime.UtcNow; if (IsLocal) { if (_local != null) _local.Resume(); } else _engine.Resume(); }
             else { Paused = true; if (IsLocal) { if (_local != null) _local.Pause(); } else _engine.Pause(); }
             Logger.Log(Paused ? "reader paused" : "reader resumed");
+            if (PauseAnnounce != null) PauseAnnounce(Paused);
             if (Changed != null) Changed();
         }
 
@@ -446,11 +448,11 @@ namespace SesliOkuma
             bool reading = _reader.Active && !_reader.Paused;
             if (reading) { DisableEditing(); _userTouchedText = false; }
             _full.ReadOnly = reading;
-            _pause.Text = !_reader.Active ? "\uE768" : (_reader.Paused ? "\uE768" : "\uE769");
+            _pause.Glyph = !_reader.Active ? "\uE768" : (_reader.Paused ? "\uE768" : "\uE769");
             Tips.Set(_pause, !_reader.Active ? L.T("Listen") : (_reader.Paused ? L.T("Resume") : L.T("Pause")));
             _speed.Text = (1.0 + _settings.Rate * 0.1).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "\u00d7";
             bool exp = _settings.BarExpanded;
-            _expand.Text = exp ? "\uE70D" : "\uE70E";
+            _expand.Glyph = exp ? "\uE70D" : "\uE70E";
             Tips.Set(_expand, L.T(exp ? "CollapseTip" : "ExpandTip"));
             _text.Visible = !exp;
             _full.Visible = exp;

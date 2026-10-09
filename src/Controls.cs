@@ -14,11 +14,31 @@ namespace SesliOkuma
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor, true);
             BackColor = Color.Transparent;
             Cursor = Cursors.Hand;
-            TabStop = false;
+            TabStop = true;
+            // Focus ring painted after each control''s own OnPaint, so keyboard users can see where they are.
+            Paint += delegate(object s, PaintEventArgs e)
+            {
+                if (!Focused || !ShowFocusCues) return;
+                using (var p = Theme.RoundRect(new RectangleF(1.5f, 1.5f, Width - 3, Height - 3), 9))
+                using (var pen = new Pen(Theme.Accent, 1.6f))
+                    e.Graphics.DrawPath(pen, p);
+            };
         }
         protected override void OnMouseEnter(EventArgs e) { Hover = true; Invalidate(); base.OnMouseEnter(e); }
         protected override void OnMouseLeave(EventArgs e) { Hover = false; Invalidate(); base.OnMouseLeave(e); }
         protected override void OnEnabledChanged(EventArgs e) { Invalidate(); base.OnEnabledChanged(e); }
+        protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+        protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Space || e.KeyCode == Keys.Enter)
+            {
+                e.Handled = true;
+                OnMouseClick(new MouseEventArgs(MouseButtons.Left, 1, Width / 2, Height / 2, 0));
+                OnClick(EventArgs.Empty);
+            }
+            base.OnKeyDown(e);
+        }
     }
 
     // One shared, theme-colored tooltip for icon buttons.
@@ -39,6 +59,15 @@ namespace SesliOkuma
                 _tip.Popup += delegate (object s, PopupEventArgs e) { e.ToolTipSize = new Size(TextRenderer.MeasureText(_tip.GetToolTip(e.AssociatedControl), Theme.Small).Width + 16, 24); };
             }
             _tip.SetToolTip(c, text);
+            c.AccessibleName = text;                     // the tooltip text doubles as the screen-reader name
+            var fb = c as FlatButton;
+            if (fb != null && fb.IconGlyph)
+            {
+                // Custom controls surface their hwnd caption as the UIA name; keep the glyph painted but
+                // let the caption carry the readable name.
+                if (fb.Glyph == null) fb.Glyph = fb.Text;
+                fb.Text = text;
+            }
         }
     }
 
@@ -48,7 +77,10 @@ namespace SesliOkuma
         public bool Accent;          // ghost button with accent glyph/text
         public bool Borderless;      // no card/border; only the glyph (quiet actions such as dismiss)
         public bool IconGlyph;
-        public FlatButton() { Size = new Size(44, 44); }
+        string _glyph;               // when set, painted instead of Text so Text can stay the accessible name
+        public string Glyph { get { return _glyph; } set { if (_glyph == value) return; _glyph = value; Invalidate(); } }
+        public FlatButton() { Size = new Size(44, 44); AccessibleRole = AccessibleRole.PushButton; }
+        string DisplayText { get { return Glyph != null ? Glyph : Text; } }
 
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -71,7 +103,7 @@ namespace SesliOkuma
                 using (var p = Theme.RoundRect(r, 8)) using (var b = new SolidBrush(Theme.CardHover)) e.Graphics.FillPath(b, p);
             }
             Color fg = !Enabled ? Theme.Muted : Primary ? Theme.AccentText : Accent ? (Hover ? Theme.AccentHover : Theme.Accent) : (Hover ? Theme.Text : Theme.Muted);
-            TextRenderer.DrawText(e.Graphics, Text, IconGlyph ? Theme.Icon : Theme.Body, ClientRectangle, fg,
+            TextRenderer.DrawText(e.Graphics, DisplayText, IconGlyph ? Theme.Icon : Theme.Body, ClientRectangle, fg,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
     }
@@ -85,8 +117,21 @@ namespace SesliOkuma
             get { return _checked; }
             set { if (_checked == value) return; _checked = value; Invalidate(); if (CheckedChanged != null) CheckedChanged(this, EventArgs.Empty); }
         }
-        public ToggleSwitch() { Size = new Size(44, 24); }
+        public ToggleSwitch() { Size = new Size(44, 24); AccessibleRole = AccessibleRole.CheckButton; }
         protected override void OnMouseClick(MouseEventArgs e) { Checked = !Checked; base.OnMouseClick(e); }
+
+        protected override AccessibleObject CreateAccessibilityInstance() { return new ToggleAccessible(this); }
+
+        sealed class ToggleAccessible : ControlAccessibleObject
+        {
+            readonly ToggleSwitch _owner;
+            public ToggleAccessible(ToggleSwitch owner) : base(owner) { _owner = owner; }
+            public override AccessibleRole Role { get { return AccessibleRole.CheckButton; } }
+            public override AccessibleStates State
+            {
+                get { return base.State | (_owner.Checked ? AccessibleStates.Checked : AccessibleStates.None); }
+            }
+        }
 
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -112,7 +157,21 @@ namespace SesliOkuma
             get { return _value; }
             set { value = Math.Max(Minimum, Math.Min(Maximum, value)); if (_value == value) return; _value = value; Invalidate(); if (ValueChanged != null) ValueChanged(this, EventArgs.Empty); }
         }
-        public Slider() { Height = 28; }
+        public Slider() { Height = 28; AccessibleRole = AccessibleRole.Slider; }
+
+        protected override bool IsInputKey(Keys keyData)
+        {
+            if (keyData == Keys.Left || keyData == Keys.Right || keyData == Keys.Home) return true;
+            return base.IsInputKey(keyData);
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Left) { Value = Value - 1; e.Handled = true; return; }
+            if (e.KeyCode == Keys.Right) { Value = Value + 1; e.Handled = true; return; }
+            if (e.KeyCode == Keys.Home) { Value = 0; e.Handled = true; return; }
+            base.OnKeyDown(e);
+        }
 
         const float Pad = 10f;
         float XFromValue(int v) { return Pad + (Width - 2 * Pad) * (v - Minimum) / (float)(Maximum - Minimum); }
@@ -184,7 +243,15 @@ namespace SesliOkuma
         public event EventHandler SelectionChanged;
         public bool MenuOpen;
 
-        public VoiceInfo Selected { get { return _selected; } set { _selected = value; Invalidate(); } }
+        public VoiceInfo Selected
+        {
+            get { return _selected; }
+            set
+            {
+                _selected = value; Invalidate();
+                Text = value == null ? L.T("PickVoice") : value.ShortName + ", " + value.LanguageName;
+            }
+        }
         public VoicePicker() { Height = 48; }
         public void SetVoices(IList<VoiceInfo> voices) { _voices = voices; }
 

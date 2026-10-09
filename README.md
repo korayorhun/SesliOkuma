@@ -32,6 +32,14 @@
 - **Accessibility extras** (under *Advanced*) — *read what the mouse points at*: rest the pointer on any button or text and it is spoken; high-contrast Windows themes are honored; a tiny words-read counter.
 - **Respectful** — per-user install, no admin rights, **no telemetry**; text goes only to the Windows speech provider (SAPI) you choose. MIT licensed.
 
+## Accessibility
+
+Sesli Okuma is built to work well for blind and low-vision users, following a screen-reader-first approach:
+
+- **Screen reader friendly** — every control in the panel exposes a proper name and state to Narrator, NVDA and JAWS; the whole panel is fully keyboard-operable (Tab / Space / Enter / arrows, visible focus ring).
+- **Accessibility mode** (tray menu or *Advanced*) — optional spoken status cues through the app's own voice for events that have no window: "no text to read", paused / resumed, speed and voice changes. Off by default so it never talks over your screen reader; switching it on or off takes one click and does not change anything else.
+- **"Read the shortcuts"** — with accessibility mode on, the tray menu can speak the full shortcut guide.
+- Everything works from global hotkeys; no mouse needed: one shortcut reads, double-press reads the clipboard, holding it pauses and resumes.
 ## Install
 
 Download the latest `SesliOkuma-Setup-x.y.z.exe` (or the portable `SesliOkuma-Portable-x.y.z.zip` — unzip and run, nothing else) from **[Releases](https://github.com/korayorhun/SesliOkuma/releases/latest)** and run it (no admin rights). The package is not code-signed yet, so SmartScreen may show "unrecognized app": *More info → Run anyway*.
@@ -90,6 +98,14 @@ Windows 10/11 için küçük bir sistem tepsisi aracı: **herhangi bir uygulamad
 
 **Hakkında & destek:** dil menüsünün altındaki *Hakkında* kartında kaynak kod, sürüm notları, sorun bildirme ve isteğe bağlı **Destek ol ♥** (GitHub Sponsors, tek seferlik) bulunur.
 
+## Erişilebilirlik
+
+Sesli Okuma, görme engelli kullanıcılar için ekran okuyucu öncelikli yaklaşımla geliştirilmiştir:
+
+- **Ekran okuyucu dostu** — paneldeki her denetim Narrator/NVDA/JAWS'a doğru ad ve durum bildirir; panel tamamen klavyeyle kullanılabilir (Tab / Boşluk / Enter / oklar, görünür odak çerçevesi).
+- **Erişilebilirlik modu** (tepsi menüsü veya *Gelişmiş*) — penceresi olmayan olaylar için isteğe bağlı sesli durum bildirimi: "okunacak metin bulunamadı", duraklatıldı / devam, hız ve ses değişimi. Varsayılan olarak kapalıdır; ekran okuyucunuzun üstüne konuşmaz. Açıp kapatmak tek tıktır ve başka hiçbir davranışı değiştirmez.
+- **"Kısayolları oku"** — mod açıkken tepsi menüsünden tüm kısayol rehberi sesli dinlenebilir.
+- Her şey küresel kısayollarla çalışır; fare gerekmez: tek kısayol okur, çift basış panoyu okur, basılı tutmak duraklatır/sürdürür.
 ## Lisans
 
 MIT — bkz. [LICENSE.txt](LICENSE.txt).

@@ -46,7 +46,7 @@ namespace SesliOkuma
         readonly NotifyIcon _tray = new NotifyIcon();
         readonly System.Windows.Forms.Timer _pulse = new System.Windows.Forms.Timer();
         readonly System.Windows.Forms.Timer _updateTimer = new System.Windows.Forms.Timer();
-        ToolStripMenuItem _miSettings, _miStop, _miBar, _miSave, _miTranslate, _miUpdates, _miAbout, _miExit;
+        ToolStripMenuItem _miSettings, _miStop, _miBar, _miSave, _miTranslate, _miUpdates, _miAbout, _miExit, _miA11y, _miGuide;
         bool _barHidden;
         public bool BarHiddenByUser { get { return _barHidden; } }
         AboutForm _about;
@@ -70,6 +70,8 @@ namespace SesliOkuma
 
             Theme.Load();
             Theme.SetReadingSize(Settings.FontSize);
+            Announcer.Enabled = Settings.AccessibilityMode;
+            Reader.PauseAnnounce = delegate(bool paused) { Announcer.Speak(L.T(paused ? "A11yPaused" : "A11yResumed")); };
             L.Lang = Settings.Language.Length > 0 ? Settings.Language : L.DetectSystemLanguage();
             BuildIcons();
             Engine.RefreshVoices();
@@ -85,9 +87,11 @@ namespace SesliOkuma
             _miUpdates = new ToolStripMenuItem(); _miUpdates.Click += delegate { Updater.CheckAsync(true); ShowSettings(); };
             _miSave = new ToolStripMenuItem(); _miSave.Click += delegate { SaveSelectionToWav(); };
             _miTranslate = new ToolStripMenuItem(); _miTranslate.Click += delegate { TranslateSelection(); };
+            _miA11y = new ToolStripMenuItem(); _miA11y.Click += delegate { SetAccessibilityMode(!Settings.AccessibilityMode); };
+            _miGuide = new ToolStripMenuItem(); _miGuide.Click += delegate { Announcer.Speak(L.F("A11yGuide", Hotkey.ToString(), Settings.TranslateHotkey)); };
             _miAbout = new ToolStripMenuItem(); _miAbout.Click += delegate { ShowAbout(); };
             _miExit = new ToolStripMenuItem(); _miExit.Click += delegate { Close(); };
-            menu.Items.AddRange(new ToolStripItem[] { _miSettings, _miStop, _miBar, _miTranslate, _miSave, new ToolStripSeparator(), _miUpdates, _miAbout, new ToolStripSeparator(), _miExit });
+            menu.Items.AddRange(new ToolStripItem[] { _miSettings, _miStop, _miBar, _miTranslate, _miSave, new ToolStripSeparator(), _miA11y, _miGuide, _miUpdates, _miAbout, new ToolStripSeparator(), _miExit });
             menu.Opening += delegate { _miBar.Visible = Reader.Active && _barHidden; };
             _tray.ContextMenuStrip = menu;
             ApplyTexts();
@@ -147,6 +151,8 @@ namespace SesliOkuma
             _miSettings.Text = L.T("Settings");
             _miStop.Text = L.T("Stop");
             _miUpdates.Text = L.T("CheckUpdates");
+            _miA11y.Text = L.T("A11yMode"); _miA11y.Checked = Settings.AccessibilityMode;
+            _miGuide.Text = L.T("A11yShortcuts"); _miGuide.Visible = Settings.AccessibilityMode;
             _miSave.Text = L.T("SaveAudio") + "…";
             _miBar.Text = L.T("ShowBarMenu");
             _miTranslate.Text = L.T("TranslateRead");
@@ -227,7 +233,11 @@ namespace SesliOkuma
             {
                 if (_bar == null || _bar.IsDisposed)
                 {
-                    _bar = new ReaderBar(Reader, Settings, delegate { if (_settings != null && !_settings.IsDisposed) _settings.SyncFromApp(); });
+                    _bar = new ReaderBar(Reader, Settings, delegate
+                    {
+                        if (_settings != null && !_settings.IsDisposed) _settings.SyncFromApp();
+                        Announcer.Speak(L.F("A11yRate", (1.0 + Settings.Rate * 0.1).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)));
+                    });
                     _bar.HideRequested += delegate { _barHidden = true; SyncBar(); };
                     _bar.CloseRequested += delegate { _barSession = false; SyncBar(); };
                     _bar.PlayRequested += delegate (string t, int off) { ReadEdited(t, off); };
@@ -240,6 +250,18 @@ namespace SesliOkuma
         }
 
         public void ShowBarAgain() { _barHidden = false; SyncBar(); }
+
+        // Accessibility mode: additive only - spoken status cues for windowless events. Normal mode stays untouched.
+        public void SetAccessibilityMode(bool on)
+        {
+            Settings.AccessibilityMode = on; Settings.Save();
+            Announcer.Enabled = on;
+            _miA11y.Checked = on; _miGuide.Visible = on;
+            Logger.Log("accessibility mode " + (on ? "on" : "off"));
+            if (on) { Announcer.Speak(L.T("A11yOn")); }
+            else { Announcer.Enabled = true; Announcer.Speak(L.T("A11yOff")); Announcer.Enabled = false; }
+            if (_settings != null && !_settings.IsDisposed) _settings.SyncFromApp();
+        }
 
         // Voice menu on the reader bar: voices for the language being read, then multilingual ones.
         void ShowBarVoiceMenu(FlatButton anchor)
@@ -270,6 +292,7 @@ namespace SesliOkuma
                         Settings.OtherVoiceId = voice.Id;
                     Settings.Save();
                     Reader.SwitchVoice(voice);
+                    Announcer.Speak(L.F("A11yVoice", voice.ShortName));
                     if (_settings != null && !_settings.IsDisposed) _settings.SyncFromApp();
                 };
                 menu.Items.Add(item);
@@ -389,7 +412,7 @@ namespace SesliOkuma
         {
             Logger.Log("translate requested");
             string text = GrabText();
-            if (text == null) { _tray.ShowBalloonTip(4000, L.T("TranslateRead"), L.T("NoTextToSave"), ToolTipIcon.Warning); return; }
+            if (text == null) { _tray.ShowBalloonTip(4000, L.T("TranslateRead"), L.T("NoTextToSave"), ToolTipIcon.Warning); Announcer.Speak(L.T("NoTextToSave")); return; }
             TranslateText(text);
         }
 
@@ -593,7 +616,7 @@ namespace SesliOkuma
                 if (text == null) { source = "pointer"; text = GetParagraphUnderMouse(); }
                 if (text == null) { source = "clipboard"; text = GetClipboardText(); }
                 long tGet = sw.ElapsedMilliseconds;
-                if (text == null || text.Trim().Length == 0) { Logger.Log("no text app=" + ForegroundApp() + " (" + tGet + " ms)"); return; }
+                if (text == null || text.Trim().Length == 0) { Logger.Log("no text app=" + ForegroundApp() + " (" + tGet + " ms)"); Announcer.Speak(L.T("NoTextToSave")); return; }
                 Read(text, source + " t=" + tUia + "/" + tCopy + "/" + tGet + "ms");
             }
             catch (Exception ex) { Logger.Log("hotkey error: " + ex.Message); }

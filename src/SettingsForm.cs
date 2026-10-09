@@ -33,6 +33,7 @@ namespace SesliOkuma
         readonly ToggleSwitch _autoUpdate = new ToggleSwitch();
         readonly ToggleSwitch _readerBar = new ToggleSwitch();
         readonly ToggleSwitch _hover = new ToggleSwitch();
+        readonly ToggleSwitch _a11y = new ToggleSwitch();
         readonly Label _stats = new Label();
         readonly HotkeyBox _trHotkey = new HotkeyBox { HintKey = "HotkeyHintSimple" };
         readonly TextBox _key = new TextBox();
@@ -104,14 +105,14 @@ namespace SesliOkuma
             _updateCard.BodyClicked += delegate { if (_app.Updater.Available != null) OpenUrl(_app.Updater.Available.PageUrl); };
             Controls.Add(_updateCard);
 
-            _naturalCard.Title = L.T("NaturalTitle"); _naturalCard.Text2 = L.T("NaturalText"); _naturalCard.Note = L.T("NaturalNote");
+            _naturalCard.Title = L.T("NaturalTitle"); _naturalCard.Text = L.T("NaturalTitle"); _naturalCard.Text2 = L.T("NaturalText"); _naturalCard.Note = L.T("NaturalNote");
             _naturalCard.ActionText = L.T("Install");
             _naturalCard.Visible = false;
             _naturalCard.ActionClicked += delegate { _naturalCard.SetProgress(0, L.F("NaturalInstalling", 0)); _app.NaturalInstaller.Start(); };
             _naturalCard.BodyClicked += delegate { OpenUrl("https://github.com/gexgd0419/NaturalVoiceSAPIAdapter"); };
             Controls.Add(_naturalCard);
 
-            _emaCard.Title = L.T("EmaTitle"); _emaCard.Text2 = L.T("EmaText"); _emaCard.Note = L.T("EmaNote");
+            _emaCard.Title = L.T("EmaTitle"); _emaCard.Text = L.T("EmaTitle"); _emaCard.Text2 = L.T("EmaText"); _emaCard.Note = L.T("EmaNote");
             _emaCard.ActionText = L.T("Install");
             _emaCard.Visible = false;
             _emaInstaller = new EmaVoiceInstaller(this);
@@ -150,7 +151,7 @@ namespace SesliOkuma
             _body.Controls.Add(_trHint);
             y += 18 + Gap + 2;
 
-            _primaryCaption.Caption = L.T("Primary");
+            _primaryCaption.Caption = L.T("Primary"); _primaryCaption.Text = L.T("Primary");
             _primaryCaption.SetBounds(Pad, y, W - 2 * Pad, 22);
             _primaryCaption.Click += delegate { ShowPrimaryLangMenu(); };
             _body.Controls.Add(_primaryCaption);
@@ -165,7 +166,7 @@ namespace SesliOkuma
             _rateValue.SetBounds(W - Pad - 160, y - Cap, 160, 16);
             _body.Controls.Add(_rateValue);
             _rate.SetBounds(Pad - 6, y - 8, W - 2 * Pad + 12, 28);
-            _rate.ValueChanged += delegate { _rateValue.Text = RateText(_rate.Value); if (!_loading) { _app.Settings.Rate = _rate.Value * 2; _app.Settings.Save(); } };
+            _rate.ValueChanged += delegate { _rateValue.Text = RateText(_rate.Value); _rate.Text = L.T("Speed") + ", " + RateText(_rate.Value); if (!_loading) { _app.Settings.Rate = _rate.Value * 2; _app.Settings.Save(); } };
             _body.Controls.Add(_rate);
             y += 24 + Gap;
 
@@ -176,7 +177,7 @@ namespace SesliOkuma
             _startup.CheckedChanged += delegate { if (!_loading) { StartupShortcut.SetEnabled(_startup.Checked); Flash(L.T(_startup.Checked ? "StartupAdded" : "StartupRemoved")); } };
 
             // ---- advanced (collapsed by default)
-            _advanced.Caption = L.T("Advanced").ToUpperInvariant();
+            _advanced.Caption = L.T("Advanced").ToUpperInvariant(); _advanced.Text = L.T("Advanced");
             _advanced.SetBounds(Pad, y, W - 2 * Pad, 22);
             _advanced.Click += delegate { _app.Settings.AdvancedOpen = !_app.Settings.AdvancedOpen; _app.Settings.Save(); Relayout(); };
             _body.Controls.Add(_advanced);
@@ -190,6 +191,8 @@ namespace SesliOkuma
             _readerBar.CheckedChanged += delegate { if (!_loading) { _app.Settings.ShowReaderBar = _readerBar.Checked; _app.Settings.Save(); } };
             a = ToggleRowIn(_adv, L.T("HoverRead"), _hover, a);
             _hover.CheckedChanged += delegate { if (!_loading) { _app.Settings.HoverRead = _hover.Checked; _app.Settings.Save(); _app.SyncHover(); } };
+            a = ToggleRowIn(_adv, L.T("A11yMode"), _a11y, a);
+            _a11y.CheckedChanged += delegate { if (!_loading) _app.SetAccessibilityMode(_a11y.Checked); };
             a += 8;
             a = CaptionIn(_adv, L.T("TranslateHotkey"), a);
             _trHotkey.SetBounds(Pad, a, W - 2 * Pad, Row);
@@ -275,6 +278,7 @@ namespace SesliOkuma
         int ToggleRowIn(Control parent, string text, ToggleSwitch t, int y)
         {
             parent.Controls.Add(MakeLabel(text, Theme.Body, Theme.Text, Pad, y + 1, W - 2 * Pad - 56, 22));
+            t.AccessibleName = text; t.Text = text;
             t.Location = new Point(W - Pad - 44, y);
             parent.Controls.Add(t);
             return y + 24 + Gap;
@@ -455,6 +459,14 @@ namespace SesliOkuma
             _trHint.Text = L.T("TranslateRead") + "  \u00b7  " + _app.TranslateHotkey;
             _trHotkey.Value = _app.TranslateHotkey;
             _key.Text = _app.Settings.DeepLKey;
+            _a11y.Checked = _app.Settings.AccessibilityMode;
+            _hotkey.AccessibleName = L.T("Hotkey") + ", " + _app.Hotkey;
+            _trHotkey.AccessibleName = L.T("TranslateHotkey") + ", " + _app.Settings.TranslateHotkey;
+            _rate.AccessibleName = L.T("Speed") + ", " + RateText(_rate.Value);
+            _rate.Text = L.T("Speed") + ", " + RateText(_rate.Value);
+            _key.AccessibleName = L.T("DeepLKey");
+            _primaryPicker.AccessibleName = L.T("Primary");
+            _otherPicker.AccessibleName = L.T("Other");
             _rate.Value = (int)Math.Round(_app.Settings.Rate / 2.0);
             _rateValue.Text = RateText(_rate.Value);
             _startup.Checked = StartupShortcut.IsEnabled;
