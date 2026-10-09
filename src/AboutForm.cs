@@ -87,7 +87,19 @@ namespace SesliOkuma
             y = Link(L.T("ReleaseNotes2"), "", Repo + "/releases", y);
             y = Link(L.T("ReportIssue"), "", Repo + "/issues", y);
             y = Link(L.T("Credits"), "NaturalVoiceSAPIAdapter · MIT", "https://github.com/gexgd0419/NaturalVoiceSAPIAdapter", y);
-            y = Link("EMA Lightning — Canberk Aslan", "normalizer-tr — Erdem Tuna  ·  ONNX Runtime — Microsoft  ·  Apache-2.0 / MIT", LocalTrVoice.CreditsUrl, y);
+
+            // Tribute to the people whose open-source work carries the local Turkish voice.
+            y += 6;
+            var tributeCap = Make(L.T("VoiceTribute").ToUpperInvariant(), Theme.Caption, Theme.Muted, Pad, y, W - 2 * Pad, 16);
+            Controls.Add(tributeCap);
+            y += 20;
+            y = Link("EMA Lightning  —  Canberk Aslan", L.T("TributeEma"), "https://huggingface.co/canberkkkkkk/ema-lightning", y);
+            y = Link("normalizer-tr  —  Erdem Tuna", L.T("TributeNorm"), "https://github.com/erdemtuna/normalizer-tr", y);
+            y = Link("ONNX Runtime  —  Microsoft", "MIT  ·  " + L.T("SourceCode") + ": ema-lightning-dotnet", LocalTrVoice.CreditsUrl, y);
+            var thanks = Make(L.T("TributeThanks"), Theme.Small, Theme.Muted, Pad, y, W - 2 * Pad, 30);
+            thanks.TextAlign = ContentAlignment.TopLeft;
+            Controls.Add(thanks);
+            y += 34;
             y += 6;
 
             Controls.Add(new Panel { BackColor = Theme.Border, Location = new Point(Pad, y), Size = new Size(W - 2 * Pad, 1) });
