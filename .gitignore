@@ -13,3 +13,7 @@ KURULUM-PROMPT.md
 .vs/
 *.user
 Thumbs.db
+
+# trvoice bridge build output
+/trvoice/bin/
+/trvoice/obj/

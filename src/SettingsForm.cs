@@ -18,6 +18,8 @@ namespace SesliOkuma
         readonly Panel _adv = new Panel();
         readonly ActionCard _updateCard = new ActionCard { ShowDismiss = true };
         readonly ActionCard _naturalCard = new ActionCard();
+        readonly ActionCard _emaCard = new ActionCard();
+        EmaVoiceInstaller _emaInstaller;
         readonly ActionCard _barCard = new ActionCard();
         readonly HotkeyBox _hotkey = new HotkeyBox();
         readonly Label _trHint = new Label { AutoSize = false, BackColor = Color.Transparent, Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleLeft };
@@ -108,6 +110,17 @@ namespace SesliOkuma
             _naturalCard.ActionClicked += delegate { _naturalCard.SetProgress(0, L.F("NaturalInstalling", 0)); _app.NaturalInstaller.Start(); };
             _naturalCard.BodyClicked += delegate { OpenUrl("https://github.com/gexgd0419/NaturalVoiceSAPIAdapter"); };
             Controls.Add(_naturalCard);
+
+            _emaCard.Title = L.T("EmaTitle"); _emaCard.Text2 = L.T("EmaText"); _emaCard.Note = L.T("EmaNote");
+            _emaCard.ActionText = L.T("Install");
+            _emaCard.Visible = false;
+            _emaInstaller = new EmaVoiceInstaller(this);
+            _emaInstaller.Progress += delegate(int p) { _emaCard.SetProgress(p, L.F("EmaInstalling", p)); };
+            _emaInstaller.Completed += delegate { _emaCard.SetIdle(); _app.RefreshVoices(); Relayout(); Flash(L.T("EmaDone")); };
+            _emaInstaller.Failed += delegate(string msg) { _emaCard.SetIdle(); Flash(L.F("NaturalFailed", msg)); };
+            _emaCard.ActionClicked += delegate { _emaCard.SetProgress(0, L.F("EmaInstalling", 0)); _emaInstaller.Start(); };
+            _emaCard.BodyClicked += delegate { OpenUrl(LocalTrVoice.CreditsUrl); };
+            Controls.Add(_emaCard);
 
             _barCard.ActionText = L.T("ShowBar");
             _barCard.Visible = false;
@@ -292,6 +305,9 @@ namespace SesliOkuma
             _updateCard.Visible = showUpdate;
             if (showNatural) { _naturalCard.SetBounds(Pad, y, W - 2 * Pad, CardH); y += CardH + Gap; }
             _naturalCard.Visible = showNatural;
+            bool showEma = Environment.Is64BitProcess && _app.Settings.PrimaryLang == "tr" && (!LocalTrVoice.IsInstalled || _emaCard.Busy);
+            if (showEma) { _emaCard.SetBounds(Pad, y, W - 2 * Pad, CardH); y += CardH + Gap; }
+            _emaCard.Visible = showEma;
 
             bool open = _app.Settings.AdvancedOpen;
             _adv.Visible = open;
@@ -478,7 +494,7 @@ namespace SesliOkuma
         {
             base.OnDeactivate(e);
             if (AnyMenuOpen) return;
-            BeginInvoke(new Action(delegate { if (!AnyMenuOpen && Form.ActiveForm != this && !_updateCard.Busy && !_naturalCard.Busy) Hide(); }));
+            BeginInvoke(new Action(delegate { if (!AnyMenuOpen && Form.ActiveForm != this && !_updateCard.Busy && !_naturalCard.Busy && !_emaCard.Busy) Hide(); }));
         }
 
         bool _forceClose;

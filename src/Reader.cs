@@ -22,7 +22,11 @@ namespace SesliOkuma
         DateTime _launched, _lastSpeaking;
         bool _sawSpeaking;
         VoiceInfo _voice;
+        LocalSession _local;                  // non-null while the local (Ema) voice is reading
 
+        bool IsLocal { get { return _voice != null && _voice.Provider == VoiceProvider.Local; } }
+
+        public VoiceInfo Voice { get { return _voice; } }
         public bool Active { get; private set; }
         public bool Paused { get; private set; }
         public string FullText { get { return _full; } }
@@ -85,12 +89,25 @@ namespace SesliOkuma
             return off;
         }
 
+        int _localBase;
+
         // Speaks _full from the given offset. With leadIn, a short first chunk keeps online voices fast.
         void SpeakFrom(int offset, bool leadIn)
         {
             string rest = _full.Substring(offset);
             _launched = DateTime.UtcNow; _lastSpeaking = DateTime.UtcNow; _sawSpeaking = false;
             _streamB = -1;
+            if (_local != null) { _local.Dispose(); _local = null; }
+            if (IsLocal)
+            {
+                _engine.Stop();
+                string error = LocalTrVoice.EnsureLoaded();
+                Logger.Log("reader start off=" + offset + " len=" + rest.Length + " voice=local");
+                if (error != null) { Logger.Log("local voice unavailable: " + error); Stop(false); return; }
+                _localBase = offset;
+                _local = new LocalSession(rest, _rate());
+                return;
+            }
             int cut = -1;
             if (leadIn && rest.Length > 150)
             {
@@ -123,6 +140,12 @@ namespace SesliOkuma
             get
             {
                 if (!Active) return 0;
+                if (IsLocal)
+                {
+                    int ls, ll;
+                    if (_local != null && _local.CurrentWord(out ls, out ll)) { _lastLocalIndex = _localBase + ls; _lastLocalLen = ll; }
+                    return Math.Min(Math.Max(0, _lastLocalIndex), Math.Max(0, _full.Length - 1));
+                }
                 int stream = _engine.CurrentStream;
                 int baseOff = (stream == _streamB && _streamB >= 0) ? _segBOffset : _segAOffset;
                 int pos = _engine.WordPosition;
@@ -131,7 +154,9 @@ namespace SesliOkuma
             }
         }
 
-        public int WordLength { get { int l = _engine.WordLength; return l > 0 ? l : 0; } }
+        int _lastLocalIndex, _lastLocalLen;
+
+        public int WordLength { get { if (IsLocal) return Math.Max(0, _lastLocalLen); int l = _engine.WordLength; return l > 0 ? l : 0; } }
         public int SentenceCount { get { return _sentences.Count; } }
         public double Fraction { get { return _full.Length > 0 ? Math.Min(1.0, CharIndex / (double)_full.Length) : 0; } }
 
@@ -158,6 +183,21 @@ namespace SesliOkuma
         public void Tick()
         {
             if (!Active) return;
+            if (IsLocal)
+            {
+                if (!Paused && _local != null)
+                {
+                    if (_local.StartedPlaying && !_sawSpeaking)
+                    {
+                        _sawSpeaking = true;
+                        Logger.Log("time-to-audio " + (int)(DateTime.UtcNow - _launched).TotalMilliseconds + " ms (local)");
+                    }
+                    if (_local.FinishedPlayback) { Stop(_local.Error == null); return; }
+                }
+                int li = CharIndex;
+                if (li != _lastIndex) { _lastIndex = li; if (Position != null) Position(); }
+                return;
+            }
             if (!Paused)
             {
                 bool speaking = _engine.IsSpeaking;
@@ -180,8 +220,8 @@ namespace SesliOkuma
         public void TogglePause()
         {
             if (!Active) return;
-            if (Paused) { Paused = false; _lastSpeaking = DateTime.UtcNow; _engine.Resume(); }
-            else { Paused = true; _engine.Pause(); }
+            if (Paused) { Paused = false; _lastSpeaking = DateTime.UtcNow; if (IsLocal) { if (_local != null) _local.Resume(); } else _engine.Resume(); }
+            else { Paused = true; if (IsLocal) { if (_local != null) _local.Pause(); } else _engine.Pause(); }
             Logger.Log(Paused ? "reader paused" : "reader resumed");
             if (Changed != null) Changed();
         }
@@ -192,7 +232,7 @@ namespace SesliOkuma
         void Jump(int delta)
         {
             if (!Active || _sentences.Count == 0) return;
-            if (Paused) { Paused = false; try { _engine.Resume(); } catch { } }
+            if (Paused) { Paused = false; if (!IsLocal) try { _engine.Resume(); } catch { } }
             int i = SentenceIndexAt(CharIndex) + delta;
             if (i >= _sentences.Count) { Stop(true); return; }
             if (i < 0) i = 0;
@@ -201,11 +241,22 @@ namespace SesliOkuma
             if (Changed != null) Changed();
         }
 
+        // Voice changed from the bar: continue from the start of the current sentence with the new voice.
+        public void SwitchVoice(VoiceInfo voice)
+        {
+            if (voice == null) return;
+            _voice = voice;
+            if (!Active || _sentences.Count == 0) return;
+            if (Paused) Paused = false;
+            SpeakFrom(_sentences[SentenceIndexAt(CharIndex)].Start, false);
+            if (Changed != null) Changed();
+        }
+
         // Rate changed: continue from the start of the current sentence at the new rate.
         public void Restart()
         {
             if (!Active || _sentences.Count == 0) return;
-            if (Paused) { Paused = false; try { _engine.Resume(); } catch { } }
+            if (Paused) { Paused = false; if (!IsLocal) try { _engine.Resume(); } catch { } }
             SpeakFrom(_sentences[SentenceIndexAt(CharIndex)].Start, false);
             if (Changed != null) Changed();
         }
@@ -214,7 +265,8 @@ namespace SesliOkuma
         {
             bool was = Active;
             if (was) Logger.Log(finished ? "reader finished" : "reader stopped");
-            Active = false; Paused = false; _lastIndex = -1;
+            Active = false; Paused = false; _lastIndex = -1; _lastLocalIndex = 0; _lastLocalLen = 0;
+            if (_local != null) { _local.Dispose(); _local = null; }
             try { _engine.Resume(); } catch { }
             _engine.Stop();
             if (was && Changed != null) Changed();
@@ -241,7 +293,8 @@ namespace SesliOkuma
         bool _editable, _userTouchedText;
         public event EventHandler CloseRequested;
         public event Action<string, int> PlayRequested;
-        public event Action<string> TranslateRequested;    // translate & read the bar text // play while idle, or paused after touching the text: text + caret offset
+        public event Action<string> TranslateRequested;    // translate & read the bar text
+        public event Action<FlatButton> VoiceMenuRequested; // open the voice menu anchored to the bar button // play while idle, or paused after touching the text: text + caret offset
         readonly FlatButton _pause = new FlatButton { IconGlyph = true, Borderless = true, Accent = true, Size = new Size(38, 34) };
         readonly FlatButton _back = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(32, 34), Text = "\uE892" };
         readonly FlatButton _skip = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(32, 34), Text = "\uE893" };
@@ -249,6 +302,7 @@ namespace SesliOkuma
         readonly FlatButton _fontMinus = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE8E7" };
         readonly FlatButton _fontPlus = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE8E8" };
         readonly FlatButton _translate = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE774" };
+        readonly FlatButton _voiceBtn = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE77B" };
         readonly FlatButton _expand = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE70E" };
         readonly FlatButton _hide = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE921" };
         readonly FlatButton _close = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE711" };
@@ -270,7 +324,7 @@ namespace SesliOkuma
             _full.ReadOnly = true; _full.HideSelection = true; _full.BorderStyle = BorderStyle.None; _full.BackColor = Theme.Bg; _full.ForeColor = Theme.Text;
             _full.Font = Theme.Reading; _full.WordWrap = true; _full.ScrollBars = RichTextBoxScrollBars.None; _full.TabStop = false;
             _full.Visible = false; _full.Cursor = Cursors.Default;
-            Controls.AddRange(new Control[] { _back, _pause, _skip, _speed, _fontMinus, _fontPlus, _translate, _text, _expand, _hide, _close, _full });
+            Controls.AddRange(new Control[] { _back, _pause, _skip, _speed, _fontMinus, _fontPlus, _translate, _voiceBtn, _text, _expand, _hide, _close, _full });
 
             _pause.Click += delegate
             {
@@ -289,6 +343,7 @@ namespace SesliOkuma
             _speed.Click += delegate { ShowSpeedMenu(); };
             _fontMinus.Click += delegate { BumpFont(-0.75f); };
             _fontPlus.Click += delegate { BumpFont(0.75f); };
+            _voiceBtn.Click += delegate { if (VoiceMenuRequested != null) VoiceMenuRequested(_voiceBtn); };
             _translate.Click += delegate
             {
                 string t = _settings.BarExpanded ? _full.Text : _loadedText;
@@ -296,7 +351,7 @@ namespace SesliOkuma
             };
             Tips.Set(_back, L.T("Previous")); Tips.Set(_skip, L.T("Next")); Tips.Set(_close, L.T("Stop"));
             Tips.Set(_hide, L.T("HideBar")); Tips.Set(_speed, L.T("SpeedTip"));
-            Tips.Set(_fontMinus, L.T("FontSmaller")); Tips.Set(_fontPlus, L.T("FontLarger")); Tips.Set(_translate, L.T("TranslateRead"));
+            Tips.Set(_fontMinus, L.T("FontSmaller")); Tips.Set(_fontPlus, L.T("FontLarger")); Tips.Set(_translate, L.T("TranslateRead")); Tips.Set(_voiceBtn, L.T("VoiceTip"));
 
             MouseDown += Drag; _text.MouseDown += Drag;
             _full.GotFocus += delegate { if (!_editable) HideCaret(_full.Handle); };
@@ -399,7 +454,7 @@ namespace SesliOkuma
             Tips.Set(_expand, L.T(exp ? "CollapseTip" : "ExpandTip"));
             _text.Visible = !exp;
             _full.Visible = exp;
-            _fontMinus.Visible = exp; _fontPlus.Visible = exp; _translate.Visible = exp;
+            _fontMinus.Visible = exp; _fontPlus.Visible = exp; _translate.Visible = exp; _voiceBtn.Visible = exp;
 
             int h;
             if (exp)
@@ -424,6 +479,7 @@ namespace SesliOkuma
                 _fontMinus.Location = new Point(66, rowY);
                 _fontPlus.Location = new Point(94, rowY);
                 _translate.Location = new Point(126, rowY);
+                _voiceBtn.Location = new Point(154, rowY);
                 _expand.Location = new Point(W - 14 - 28 - 4 - 28 - 4 - 28, rowY);
                 _hide.Location = new Point(W - 14 - 28 - 4 - 28, rowY);
                 _close.Location = new Point(W - 14 - 28, rowY);

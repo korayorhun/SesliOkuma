@@ -696,7 +696,10 @@ namespace SesliOkuma
             all["en"]["Pause"] = "Pause";
             all["en"]["Resume"] = "Resume";
             all["en"]["SpeedTip"] = "Speed";
-            all["en"]["FontSmaller"] = "Smaller text"; all["en"]["FontLarger"] = "Larger text";
+            all["en"]["FontSmaller"] = "Smaller text"; all["en"]["FontLarger"] = "Larger text";
+            all["en"]["VoiceTip"] = "Voice";
+            all["en"]["EmaTag"] = "on this PC";
+            all["en"]["EmaTitle"] = "Local Turkish natural voice (Ema)"; all["en"]["EmaText"] = "Natural Turkish voice, fully offline; adapts English words too"; all["en"]["EmaNote"] = "~50 MB, downloaded once"; all["en"]["EmaInstalling"] = "Downloading Ema voice\u2026  {0}%"; all["en"]["EmaDone"] = "Ema voice added \u2014 now the default Turkish voice";
             all["hi"]["SlightlySlow"] = "थोड़ा धीमा";
             all["hi"]["SlightlyFast"] = "थोड़ा तेज़";
             all["hi"]["Listen"] = "सुनें";
@@ -708,7 +711,10 @@ namespace SesliOkuma
             all["hi"]["Pause"] = "रोकें";
             all["hi"]["Resume"] = "जारी रखें";
             all["hi"]["SpeedTip"] = "गति";
-            all["hi"]["FontSmaller"] = "पाठ छोटा करें"; all["hi"]["FontLarger"] = "पाठ बड़ा करें";
+            all["hi"]["FontSmaller"] = "पाठ छोटा करें"; all["hi"]["FontLarger"] = "पाठ बड़ा करें";
+            all["hi"]["VoiceTip"] = "\u0906\u0935\u093e\u091c\u093c";
+            all["hi"]["EmaTag"] = "\u0911\u092b\u093c\u0932\u093e\u0907\u0928";
+            all["hi"]["EmaTitle"] = "\u0938\u094d\u0925\u093e\u0928\u0940\u092f \u0924\u0941\u0930\u094d\u0915\u0940 \u092a\u094d\u0930\u093e\u0915\u0943\u0924\u093f\u0915 \u0906\u0935\u093e\u091c\u093c (Ema)"; all["hi"]["EmaText"] = "\u0911\u092b\u093c\u0932\u093e\u0907\u0928 \u092a\u094d\u0930\u093e\u0915\u0943\u0924\u093f\u0915 \u0924\u0941\u0930\u094d\u0915\u0940 \u0906\u0935\u093e\u091c\u093c"; all["hi"]["EmaNote"] = "~50 MB \u00b7 \u090f\u0915 \u092c\u093e\u0930 \u0921\u093e\u0909\u0928\u0932\u094b\u0921"; all["hi"]["EmaInstalling"] = "Ema \u0906\u0935\u093e\u091c\u093c \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0939\u094b \u0930\u0939\u0940 \u0939\u0948\u2026  {0}%"; all["hi"]["EmaDone"] = "Ema \u0906\u0935\u093e\u091c\u093c \u091c\u094b\u0921\u093c\u0940 \u0917\u0908";
             all["fr"]["SlightlySlow"] = "Un peu lent";
             all["fr"]["SlightlyFast"] = "Un peu rapide";
             all["fr"]["Listen"] = "Écouter";
@@ -720,7 +726,10 @@ namespace SesliOkuma
             all["fr"]["Pause"] = "Pause";
             all["fr"]["Resume"] = "Reprendre";
             all["fr"]["SpeedTip"] = "Vitesse";
-            all["fr"]["FontSmaller"] = "Réduire le texte"; all["fr"]["FontLarger"] = "Agrandir le texte";
+            all["fr"]["FontSmaller"] = "Réduire le texte"; all["fr"]["FontLarger"] = "Agrandir le texte";
+            all["fr"]["VoiceTip"] = "Voix";
+            all["fr"]["EmaTag"] = "hors ligne";
+            all["fr"]["EmaTitle"] = "Voix naturelle turque locale (Ema)"; all["fr"]["EmaText"] = "Voix turque naturelle, entièrement hors ligne ; adapte aussi les mots anglais"; all["fr"]["EmaNote"] = "~50 Mo, téléchargée une fois"; all["fr"]["EmaInstalling"] = "Téléchargement de la voix Ema\u2026  {0}%"; all["fr"]["EmaDone"] = "Voix Ema ajoutée \u2014 voix turque par défaut";
             all["tr"]["SlightlySlow"] = "Biraz yavaş";
             all["tr"]["SlightlyFast"] = "Biraz hızlı";
             all["tr"]["Listen"] = "Dinle";
@@ -732,7 +741,10 @@ namespace SesliOkuma
             all["tr"]["Pause"] = "Duraklat";
             all["tr"]["Resume"] = "Devam";
             all["tr"]["SpeedTip"] = "Hız";
-            all["tr"]["FontSmaller"] = "Yazıyı küçült"; all["tr"]["FontLarger"] = "Yazıyı büyüt";
+            all["tr"]["FontSmaller"] = "Yazıyı küçült"; all["tr"]["FontLarger"] = "Yazıyı büyüt";
+            all["tr"]["VoiceTip"] = "Ses";
+            all["tr"]["EmaTag"] = "bu bilgisayarda";
+            all["tr"]["EmaTitle"] = "Yerel Türkçe doğal ses (Ema)"; all["tr"]["EmaText"] = "İnternetsiz çalışan doğal Türkçe ses; İngilizce kelimeleri de uyarlar"; all["tr"]["EmaNote"] = "~50 MB · tek indirme"; all["tr"]["EmaInstalling"] = "Ema sesi indiriliyor\u2026  %{0}"; all["tr"]["EmaDone"] = "Ema sesi eklendi \u2014 varsayılan Türkçe ses yapıldı";
             all["ar"]["SlightlySlow"] = "أبطأ قليلاً";
             all["ar"]["SlightlyFast"] = "أسرع قليلاً";
             all["ar"]["Listen"] = "استماع";
@@ -744,7 +756,10 @@ namespace SesliOkuma
             all["ar"]["Pause"] = "إيقاف مؤقت";
             all["ar"]["Resume"] = "متابعة";
             all["ar"]["SpeedTip"] = "السرعة";
-            all["ar"]["FontSmaller"] = "تصغير النص"; all["ar"]["FontLarger"] = "تكبير النص";
+            all["ar"]["FontSmaller"] = "تصغير النص"; all["ar"]["FontLarger"] = "تكبير النص";
+            all["ar"]["VoiceTip"] = "\u0627\u0644\u0635\u0648\u062a";
+            all["ar"]["EmaTag"] = "\u062f\u0648\u0646 \u0625\u0646\u062a\u0631\u0646\u062a";
+            all["ar"]["EmaTitle"] = "\u0635\u0648\u062a \u062a\u0631\u0643\u064a \u0637\u0628\u064a\u0639\u064a \u0645\u062d\u0644\u064a (Ema)"; all["ar"]["EmaText"] = "\u0635\u0648\u062a \u062a\u0631\u0643\u064a \u0637\u0628\u064a\u0639\u064a \u064a\u0639\u0645\u0644 \u062f\u0648\u0646 \u0625\u0646\u062a\u0631\u0646\u062a"; all["ar"]["EmaNote"] = "~50 \u0645\u064a\u063a\u0627\u0628\u0627\u064a\u062a \u00b7 \u062a\u0646\u0632\u064a\u0644 \u0648\u0627\u062d\u062f"; all["ar"]["EmaInstalling"] = "\u062c\u0627\u0631\u0650 \u062a\u0646\u0632\u064a\u0644 \u0635\u0648\u062a Ema\u2026  {0}%"; all["ar"]["EmaDone"] = "\u062a\u0645\u062a \u0625\u0636\u0627\u0641\u0629 \u0635\u0648\u062a Ema";
             all["es"]["SlightlySlow"] = "Algo lento";
             all["es"]["SlightlyFast"] = "Algo rápido";
             all["es"]["Listen"] = "Escuchar";
@@ -756,7 +771,10 @@ namespace SesliOkuma
             all["es"]["Pause"] = "Pausa";
             all["es"]["Resume"] = "Continuar";
             all["es"]["SpeedTip"] = "Velocidad";
-            all["es"]["FontSmaller"] = "Reducir texto"; all["es"]["FontLarger"] = "Ampliar texto";
+            all["es"]["FontSmaller"] = "Reducir texto"; all["es"]["FontLarger"] = "Ampliar texto";
+            all["es"]["VoiceTip"] = "Voz";
+            all["es"]["EmaTag"] = "sin conexi\u00f3n";
+            all["es"]["EmaTitle"] = "Voz natural turca local (Ema)"; all["es"]["EmaText"] = "Voz turca natural sin conexión; adapta también palabras en inglés"; all["es"]["EmaNote"] = "~50 MB, una sola descarga"; all["es"]["EmaInstalling"] = "Descargando la voz Ema\u2026  {0}%"; all["es"]["EmaDone"] = "Voz Ema añadida \u2014 ahora es la voz turca predeterminada";
             all["pt"]["SlightlySlow"] = "Um pouco lento";
             all["pt"]["SlightlyFast"] = "Um pouco rápido";
             all["pt"]["Listen"] = "Ouvir";
@@ -768,7 +786,10 @@ namespace SesliOkuma
             all["pt"]["Pause"] = "Pausar";
             all["pt"]["Resume"] = "Continuar";
             all["pt"]["SpeedTip"] = "Velocidade";
-            all["pt"]["FontSmaller"] = "Diminuir texto"; all["pt"]["FontLarger"] = "Aumentar texto";
+            all["pt"]["FontSmaller"] = "Diminuir texto"; all["pt"]["FontLarger"] = "Aumentar texto";
+            all["pt"]["VoiceTip"] = "Voz";
+            all["pt"]["EmaTag"] = "offline";
+            all["pt"]["EmaTitle"] = "Voz natural turca local (Ema)"; all["pt"]["EmaText"] = "Voz turca natural totalmente offline; adapta também palavras em inglês"; all["pt"]["EmaNote"] = "~50 MB, baixada uma vez"; all["pt"]["EmaInstalling"] = "Baixando a voz Ema\u2026  {0}%"; all["pt"]["EmaDone"] = "Voz Ema adicionada \u2014 agora é a voz turca padrão";
             all["zh"]["SlightlySlow"] = "稍慢";
             all["zh"]["SlightlyFast"] = "稍快";
             all["zh"]["Listen"] = "试听";
@@ -780,7 +801,10 @@ namespace SesliOkuma
             all["zh"]["Pause"] = "暂停";
             all["zh"]["Resume"] = "继续";
             all["zh"]["SpeedTip"] = "速度";
-            all["zh"]["FontSmaller"] = "缩小文字"; all["zh"]["FontLarger"] = "放大文字";
+            all["zh"]["FontSmaller"] = "缩小文字"; all["zh"]["FontLarger"] = "放大文字";
+            all["zh"]["VoiceTip"] = "\u8bed\u97f3";
+            all["zh"]["EmaTag"] = "\u79bb\u7ebf";
+            all["zh"]["EmaTitle"] = "\u672c\u5730\u571f\u8033\u5176\u8bed\u81ea\u7136\u8bed\u97f3 (Ema)"; all["zh"]["EmaText"] = "\u5b8c\u5168\u79bb\u7ebf\u7684\u81ea\u7136\u571f\u8033\u5176\u8bed\u8bed\u97f3"; all["zh"]["EmaNote"] = "~50 MB \u00b7 \u4e00\u6b21\u4e0b\u8f7d"; all["zh"]["EmaInstalling"] = "\u6b63\u5728\u4e0b\u8f7d Ema \u8bed\u97f3\u2026  {0}%"; all["zh"]["EmaDone"] = "\u5df2\u6dfb\u52a0 Ema \u8bed\u97f3";
         }
 
         static void AddFreeTranslate(Dictionary<string, Dictionary<string, string>> all)

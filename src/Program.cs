@@ -188,7 +188,15 @@ namespace SesliOkuma
                 if (v == null && Engine.Voices.Count > 0) v = Engine.Voices[0];
                 if (v != null) { Settings.OtherVoiceId = v.Id; changed = true; }
             }
+            // The local Ema voice becomes the Turkish default once, right after it appears; the user can still pick another.
+            if (LocalTrVoice.IsInstalled && Settings.PrimaryLang == "tr" && !Settings.EmaDefaultApplied)
+            {
+                Settings.EmaDefaultApplied = true;
+                if (Settings.PrimaryVoiceId != LocalTrVoice.VoiceId) { Settings.PrimaryVoiceId = LocalTrVoice.VoiceId; Logger.Log("ema set as default tr voice"); }
+                changed = true;
+            }
             if (changed) Settings.Save();
+            LocalTrVoice.WarmUpAsync();
             Logger.Log("voices ready; primary=" + Settings.PrimaryLang + " voice=" + (PrimaryVoice != null ? PrimaryVoice.Name : "-") + " other=" + (OtherVoice != null ? OtherVoice.Name : "-"));
         }
 
@@ -224,6 +232,7 @@ namespace SesliOkuma
                     _bar.CloseRequested += delegate { _barSession = false; SyncBar(); };
                     _bar.PlayRequested += delegate (string t, int off) { ReadEdited(t, off); };
                     _bar.TranslateRequested += delegate (string t) { TranslateText(t); };
+                    _bar.VoiceMenuRequested += ShowBarVoiceMenu;
                 }
                 if (!_bar.Visible) { _bar.Place(); _bar.Show(); }
             }
@@ -231,6 +240,43 @@ namespace SesliOkuma
         }
 
         public void ShowBarAgain() { _barHidden = false; SyncBar(); }
+
+        // Voice menu on the reader bar: voices for the language being read, then multilingual ones.
+        void ShowBarVoiceMenu(FlatButton anchor)
+        {
+            var current = Reader.Voice;
+            string lang = current != null ? current.Lang2 : Settings.PrimaryLang;
+            var menu = ThemedMenu.Create();
+            int count = 0;
+            var ordered = new System.Collections.Generic.List<VoiceInfo>();
+            foreach (var v in Engine.Voices) if (v.Lang2 == lang) ordered.Add(v);
+            foreach (var v in Engine.Voices) if (v.Lang2 != lang && v.IsMultilingual) ordered.Add(v);
+            foreach (var v in ordered)
+            {
+                if (count > 14) break;
+                string label = v.ShortName;
+                if (v.Provider == VoiceProvider.Local) label += "  \u00b7  " + L.T("EmaTag");
+                else if (v.IsMultilingual) label += "  \u00b7  " + L.T("Multilingual");
+                else if (!v.IsNatural) label += "  \u00b7  " + L.T("Classic");
+                var item = new ToolStripMenuItem(label);
+                item.Tag = v;
+                item.Checked = current != null && string.Equals(v.Id, current.Id, StringComparison.OrdinalIgnoreCase);
+                item.Click += delegate(object sender, EventArgs e)
+                {
+                    var voice = (VoiceInfo)((ToolStripMenuItem)sender).Tag;
+                    if (voice.Lang2 == Settings.PrimaryLang || (current != null && current.Lang2 == Settings.PrimaryLang))
+                        Settings.PrimaryVoiceId = voice.Id;
+                    else
+                        Settings.OtherVoiceId = voice.Id;
+                    Settings.Save();
+                    Reader.SwitchVoice(voice);
+                    if (_settings != null && !_settings.IsDisposed) _settings.SyncFromApp();
+                };
+                menu.Items.Add(item);
+                count++;
+            }
+            if (count > 0) menu.Show(anchor, new Point(0, -Math.Min(count, 14) * 32));
+        }
 
         // Play pressed on the idle bar: read its (possibly user-edited) text.
         void ReadEdited(string text, int offset)

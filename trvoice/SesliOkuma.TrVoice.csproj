@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>SesliOkuma.TrVoice</RootNamespace>
+    <AssemblyName>SesliOkuma.TrVoice</AssemblyName>
+    <Description>Local Turkish neural voice for Sesli Okuma: EMA Lightning (Canberk Aslan, Apache-2.0) on ONNX Runtime, with normalizer-tr (Erdem Tuna, Apache-2.0). Vendored net48 build of github.com/korayorhun/ema-lightning-dotnet.</Description>
+    <Version>1.0.0</Version>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.30.0" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="System" />
+    <Using Include="System.Collections.Generic" />
+    <Using Include="System.IO" />
+    <Using Include="System.Linq" />
+  </ItemGroup>
+</Project>

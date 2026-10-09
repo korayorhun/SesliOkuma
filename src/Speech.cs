@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace SesliOkuma
 {
-    public enum VoiceProvider { Sapi }
+    public enum VoiceProvider { Sapi, Local }
 
     public sealed class VoiceInfo
     {
@@ -66,6 +66,17 @@ namespace SesliOkuma
                     Parse(v, langHex ?? "");
                     _voices.Add(v);
                 }
+                if (LocalTrVoice.IsInstalled)
+                {
+                    var local = new VoiceInfo();
+                    local.Provider = VoiceProvider.Local;
+                    local.Id = LocalTrVoice.VoiceId;
+                    local.Name = "Ema";
+                    local.Lang2 = "tr";
+                    local.LanguageName = "T\u00fcrk\u00e7e";
+                    local.Description = "Ema - Turkish (Natural, offline)";
+                    _voices.Insert(0, local);
+                }
                 Logger.Log("voices: " + _voices.Count);
             }
             catch (Exception ex) { Logger.Log("GetVoices failed: " + ex.Message); }
@@ -117,13 +128,18 @@ namespace SesliOkuma
         // Best voice for a language: natural > multilingual natural > classic.
         public VoiceInfo BestFor(string lang2)
         {
-            VoiceInfo natural = null, classic = null, multi = null;
+            VoiceInfo local = null, natural = null, classic = null, multi = null;
             foreach (var v in _voices)
             {
-                if (v.Lang2 == lang2) { if (v.IsNatural) { if (natural == null || (natural.IsMultilingual && !v.IsMultilingual)) natural = v; } else if (classic == null) classic = v; }
+                if (v.Lang2 == lang2)
+                {
+                    if (v.Provider == VoiceProvider.Local) { if (local == null) local = v; }
+                    else if (v.IsNatural) { if (natural == null || (natural.IsMultilingual && !v.IsMultilingual)) natural = v; }
+                    else if (classic == null) classic = v;
+                }
                 else if (v.IsMultilingual && multi == null) multi = v;
             }
-            return natural ?? multi ?? classic;
+            return local ?? natural ?? multi ?? classic;
         }
 
         public bool HasNaturalVoices { get { foreach (var v in _voices) if (v.IsNatural) return true; return false; } }
@@ -139,6 +155,7 @@ namespace SesliOkuma
         {
             get
             {
+                if (LocalTrVoice.IsPreviewPlaying) return true;
                 if (_voice == null) return false;
                 try { return (int)Get(Get(_voice, "Status"), "RunningState") == 2; } catch { return false; }
             }
@@ -146,6 +163,7 @@ namespace SesliOkuma
 
         public int Speak(string text, VoiceInfo voice, int rate)
         {
+            if (voice != null && voice.Provider == VoiceProvider.Local) { LocalTrVoice.Preview(text, rate); return 0; }
             if (_voice == null) return -1;
             if (voice != null) Set(_voice, "Voice", voice.Token);
             Set(_voice, "Rate", Math.Max(-10, Math.Min(10, rate)));
@@ -165,6 +183,7 @@ namespace SesliOkuma
 
         public void Stop()
         {
+            LocalTrVoice.StopPreview();
             if (_voice == null) return;
             try { Call(_voice, "Speak", "", 3); } catch { }
         }
@@ -172,6 +191,12 @@ namespace SesliOkuma
         // Renders text to a WAV file with a separate voice instance, so playback is not disturbed. Blocking; call on a worker thread.
         public void SaveToWav(string text, VoiceInfo voice, int rate, string path)
         {
+            if (voice != null && voice.Provider == VoiceProvider.Local)
+            {
+                string error = LocalTrVoice.SynthToWav(text, rate, path);
+                if (!string.IsNullOrEmpty(error)) throw new InvalidOperationException(error);
+                return;
+            }
             object v = Activator.CreateInstance(_type);
             object stream = Activator.CreateInstance(Type.GetTypeFromProgID("SAPI.SpFileStream"));
             try

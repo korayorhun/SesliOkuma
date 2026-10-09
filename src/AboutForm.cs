@@ -87,6 +87,7 @@ namespace SesliOkuma
             y = Link(L.T("ReleaseNotes2"), "", Repo + "/releases", y);
             y = Link(L.T("ReportIssue"), "", Repo + "/issues", y);
             y = Link(L.T("Credits"), "NaturalVoiceSAPIAdapter · MIT", "https://github.com/gexgd0419/NaturalVoiceSAPIAdapter", y);
+            y = Link("EMA Lightning — Canberk Aslan", "normalizer-tr — Erdem Tuna  ·  ONNX Runtime — Microsoft  ·  Apache-2.0 / MIT", LocalTrVoice.CreditsUrl, y);
             y += 6;
 
             Controls.Add(new Panel { BackColor = Theme.Border, Location = new Point(Pad, y), Size = new Size(W - 2 * Pad, 1) });
