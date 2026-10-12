@@ -70,8 +70,15 @@ namespace SesliOkuma
 
             Theme.Load();
             Theme.SetReadingSize(Settings.FontSize);
+            PromoteTrayIconOnce();
             Announcer.Enabled = Settings.AccessibilityMode;
-            Reader.PauseAnnounce = delegate(bool paused) { Announcer.Speak(L.T(paused ? "A11yPaused" : "A11yResumed")); };
+            // Only the pause gets a cue: resuming is audible by itself, a cue would talk over the reading.
+            Reader.PauseAnnounce = delegate(bool paused) { if (paused) Announcer.Speak(L.T("A11yPaused")); };
+            Announcer.LocalFallback = delegate(string text)
+            {
+                if (!LocalTrVoice.IsInstalled || L.Lang != "tr") return false;
+                try { LocalTrVoice.Preview(text, 0); return true; } catch { return false; }
+            };
             L.Lang = Settings.Language.Length > 0 ? Settings.Language : L.DetectSystemLanguage();
             BuildIcons();
             Engine.RefreshVoices();
@@ -202,8 +209,25 @@ namespace SesliOkuma
                 changed = true;
             }
             if (changed) Settings.Save();
+            UpdateAnnouncerVoice();
             LocalTrVoice.WarmUpAsync();
             Logger.Log("voices ready; primary=" + Settings.PrimaryLang + " voice=" + (PrimaryVoice != null ? PrimaryVoice.Name : "-") + " other=" + (OtherVoice != null ? OtherVoice.Name : "-"));
+        }
+
+        // Status cues follow the UI language with a SAPI voice (instant); the local voice is only a fallback,
+        // so announcements never come out in the wrong language again.
+        void UpdateAnnouncerVoice()
+        {
+            VoiceInfo natural = null, classic = null, multi = null;
+            foreach (var v in Engine.Voices)
+            {
+                if (v.Provider != VoiceProvider.Sapi) continue;
+                if (v.Lang2 == L.Lang) { if (v.IsNatural) { if (natural == null || (natural.IsMultilingual && !v.IsMultilingual)) natural = v; } else if (classic == null) classic = v; }
+                else if (v.IsMultilingual && v.IsNatural && multi == null) multi = v;
+            }
+            var pick = natural ?? classic ?? multi;
+            Announcer.VoiceToken = pick != null ? pick.Token : null;
+            Logger.Log("announcer voice=" + (pick != null ? pick.Name : "(local/default)"));
         }
 
         public void RefreshVoices()
@@ -236,7 +260,7 @@ namespace SesliOkuma
                     _bar = new ReaderBar(Reader, Settings, delegate
                     {
                         if (_settings != null && !_settings.IsDisposed) _settings.SyncFromApp();
-                        Announcer.Speak(L.F("A11yRate", (1.0 + Settings.Rate * 0.1).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)));
+                        if (!Reader.Active || Reader.Paused) Announcer.Speak(L.F("A11yRate", (1.0 + Settings.Rate * 0.1).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)));
                     });
                     _bar.HideRequested += delegate { _barHidden = true; SyncBar(); };
                     _bar.CloseRequested += delegate { _barSession = false; SyncBar(); };
@@ -251,6 +275,40 @@ namespace SesliOkuma
 
         public void ShowBarAgain() { _barHidden = false; SyncBar(); }
 
+        // A tray-only app that Windows hides into the overflow looks "gone"; promote our icon to the
+        // visible area once (Windows 11 NotifyIconSettings). If the user hides it later, we respect that.
+        void PromoteTrayIconOnce()
+        {
+            if (Settings.TrayPromoted) return;
+            Settings.TrayPromoted = true; Settings.Save();
+            // Windows creates the NotifyIconSettings entry shortly after the icon is added; scan a bit later.
+            System.Threading.ThreadPool.QueueUserWorkItem(delegate { System.Threading.Thread.Sleep(3000); PromoteTrayIconCore(); });
+        }
+
+        void PromoteTrayIconCore()
+        {
+            try
+            {
+                string exe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+                using (var root = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Control Panel\NotifyIconSettings"))
+                {
+                    if (root == null) return;
+                    foreach (string name in root.GetSubKeyNames())
+                        using (var key = root.OpenSubKey(name, true))
+                        {
+                            if (key == null) continue;
+                            var path = key.GetValue("ExecutablePath") as string;
+                            if (path != null && string.Equals(path, exe, StringComparison.OrdinalIgnoreCase) && key.GetValue("IsPromoted") == null)
+                            {
+                                key.SetValue("IsPromoted", 1, Microsoft.Win32.RegistryValueKind.DWord);
+                                Logger.Log("tray icon promoted");
+                            }
+                        }
+                }
+            }
+            catch (Exception ex) { Logger.Log("tray promote: " + ex.Message); }
+        }
+
         // Accessibility mode: additive only - spoken status cues for windowless events. Normal mode stays untouched.
         public void SetAccessibilityMode(bool on)
         {
@@ -258,7 +316,7 @@ namespace SesliOkuma
             Announcer.Enabled = on;
             _miA11y.Checked = on; _miGuide.Visible = on;
             Logger.Log("accessibility mode " + (on ? "on" : "off"));
-            if (on) { Announcer.Speak(L.T("A11yOn")); }
+            if (on) { Announcer.Speak(L.T("A11yOn") + ". " + L.F("A11yGuide", Hotkey.ToString(), Settings.TranslateHotkey)); }
             else { Announcer.Enabled = true; Announcer.Speak(L.T("A11yOff")); Announcer.Enabled = false; }
             if (_settings != null && !_settings.IsDisposed) _settings.SyncFromApp();
         }
@@ -292,7 +350,7 @@ namespace SesliOkuma
                         Settings.OtherVoiceId = voice.Id;
                     Settings.Save();
                     Reader.SwitchVoice(voice);
-                    Announcer.Speak(L.F("A11yVoice", voice.ShortName));
+                    if (!Reader.Active || Reader.Paused) Announcer.Speak(L.F("A11yVoice", voice.ShortName));
                     if (_settings != null && !_settings.IsDisposed) _settings.SyncFromApp();
                 };
                 menu.Items.Add(item);

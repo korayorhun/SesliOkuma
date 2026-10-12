@@ -12,17 +12,22 @@ namespace SesliOkuma
         static bool _failed;
 
         public static bool Enabled;
+        public static object VoiceToken;                 // SAPI token matching the UI language; set by TrayApp
+        public static Func<string, bool> LocalFallback;  // speaks through the local voice when no SAPI voice fits
 
         public static void Speak(string text)
         {
             if (!Enabled || text == null || text.Length == 0 || _failed) return;
             try
             {
+                if (VoiceToken == null && LocalFallback != null && LocalFallback(text)) return;
                 if (_voice == null)
                 {
                     var type = Type.GetTypeFromProgID("SAPI.SpVoice");
                     _voice = Activator.CreateInstance(type);
                 }
+                if (VoiceToken != null)
+                    try { _voice.GetType().InvokeMember("Voice", BindingFlags.SetProperty, null, _voice, new object[] { VoiceToken }); } catch { }
                 _voice.GetType().InvokeMember("Speak", BindingFlags.InvokeMethod, null, _voice, new object[] { text, 3 });   // async + purge own queue
             }
             catch (Exception ex) { _failed = true; Logger.Log("announcer: " + ex.Message); }
