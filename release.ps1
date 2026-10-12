@@ -26,4 +26,43 @@ git add -A; git commit -q -m "release: v$Version" -m "Co-Authored-By: Claude Opu
 if (-not $Notes) { $Notes = "Sesli Okuma $Version" }
 gh release create "v$Version" $setup $shaFile $portable --title "Sesli Okuma $Version" --notes $Notes
 Write-Host "Released v$Version  SHA256=$sha"
-Write-Host "winget: update winget\*.yaml (PackageVersion, InstallerUrl, InstallerSha256), then: wingetcreate submit winget"
+# winget: submit the update PR (the package is published); manifests go to temp, not into the repo.
+if (Get-Command wingetcreate -ErrorAction SilentlyContinue) {
+  $env:WINGET_CREATE_GITHUB_TOKEN = (gh auth token)
+  $wgOut = Join-Path $env:TEMP "sesliokuma-winget-$Version"
+  $setupUrl = "https://github.com/korayorhun/SesliOkuma/releases/download/v$Version/SesliOkuma-Setup-$Version.exe"
+  wingetcreate update KorayOrhun.SesliOkuma --version $Version --urls "$setupUrl|x64|user" --out $wgOut --prtitle "Update version: KorayOrhun.SesliOkuma version $Version" --submit
+  Remove-Item Env:WINGET_CREATE_GITHUB_TOKEN
+} else { Write-Host "winget: wingetcreate not found - submit the update manually" }
+
+# scoop: keep the personal bucket (korayorhun/scoop-bucket) on the latest portable zip
+try {
+  $zipHash = (Get-FileHash $portable -Algorithm SHA256).Hash.ToLower()
+  $json = @"
+{
+    "version": "$Version",
+    "description": "Read selected text aloud in any Windows app with one hotkey: natural voices, word highlighting, screen OCR, free translation.",
+    "homepage": "https://github.com/korayorhun/SesliOkuma",
+    "license": "MIT",
+    "url": "https://github.com/korayorhun/SesliOkuma/releases/download/v$Version/SesliOkuma-Portable-$Version.zip",
+    "hash": "$zipHash",
+    "shortcuts": [
+        [
+            "SesliOkuma.exe",
+            "Sesli Okuma"
+        ]
+    ],
+    "checkver": "github",
+    "autoupdate": {
+        "url": "https://github.com/korayorhun/SesliOkuma/releases/download/v`$version/SesliOkuma-Portable-`$version.zip"
+    }
+}
+"@
+  $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json))
+  $previous = gh api repos/korayorhun/scoop-bucket/contents/bucket/sesliokuma.json --jq .sha 2>$null
+  $apiArgs = @('-X', 'PUT', 'repos/korayorhun/scoop-bucket/contents/bucket/sesliokuma.json',
+    '-f', "message=sesliokuma: Update to version $Version`n`nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>", '-f', "content=$b64")
+  if ($previous) { $apiArgs += @('-f', "sha=$previous") }
+  gh api @apiArgs --jq .commit.sha | Out-Null
+  Write-Host "scoop bucket updated to $Version"
+} catch { Write-Host "scoop bucket update failed: $_" }

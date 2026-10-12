@@ -75,6 +75,7 @@ namespace SesliOkuma
 
             Theme.Load();
             Theme.SetReadingSize(Settings.FontSize);
+            Logger.Log("start v" + Updater.CurrentVersionText + (Updater.IsInstalledCopy ? " (installed)" : " (portable)"));
             PromoteTrayIconOnce();
             System.Threading.ThreadPool.QueueUserWorkItem(delegate { AudioDuck.RecoverAfterCrash(); });
             Announcer.Enabled = Settings.AccessibilityMode;

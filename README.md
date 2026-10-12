@@ -48,7 +48,15 @@ Sesli Okuma is built to work well for blind and low-vision users, following a sc
 - **Welcome for screen-reader users** — when Narrator, NVDA or JAWS is running on first start, Sesli Okuma introduces itself and its shortcut once, by voice.
 ## Install
 
-Download the latest `SesliOkuma-Setup-x.y.z.exe` (or the portable `SesliOkuma-Portable-x.y.z.zip` — unzip and run, nothing else) from **[Releases](https://github.com/korayorhun/SesliOkuma/releases/latest)** and run it (no admin rights). The package is not code-signed yet, so SmartScreen may show "unrecognized app": *More info → Run anyway*.
+The quickest way, built into Windows 10/11:
+
+```
+winget install KorayOrhun.SesliOkuma
+```
+
+[Scoop](https://scoop.sh) users: `scoop bucket add korayorhun https://github.com/korayorhun/scoop-bucket` then `scoop install korayorhun/sesliokuma` (portable; updates arrive through `scoop update`).
+
+Or download the latest `SesliOkuma-Setup-x.y.z.exe` (or the portable `SesliOkuma-Portable-x.y.z.zip` — unzip and run, nothing else) from **[Releases](https://github.com/korayorhun/SesliOkuma/releases/latest)** and run it (no admin rights). The package is not code-signed yet, so SmartScreen may show "unrecognized app": *More info → Run anyway*.
 
 | Action | How |
 |---|---|
@@ -102,7 +110,7 @@ Windows 10/11 için küçük bir sistem tepsisi aracı: **herhangi bir uygulamad
 
 **Dosya oku:** Explorer'da bir `.txt` / `.md` dosyasına sağ tık → *Sesli Okuma ile oku*. **Erişilebilirlik** (Gelişmiş): fareyle üzerine gelince oku, yüksek kontrast desteği, okunan kelime sayacı. **Taşınabilir sürüm:** Releases'ta zip.
 
-**Kurulum:** [Releases](https://github.com/korayorhun/SesliOkuma/releases/latest) sayfasından `SesliOkuma-Setup-x.y.z.exe`. İmzasız olduğu için SmartScreen uyarısı çıkabilir: *Ek bilgi → Yine de çalıştır*.
+**Kurulum:** en kolayı, Windows'ta hazır gelen winget ile — Komut İstemi'ne `winget install KorayOrhun.SesliOkuma` yazın. Ya da [Releases](https://github.com/korayorhun/SesliOkuma/releases/latest) sayfasından `SesliOkuma-Setup-x.y.z.exe`. İmzasız olduğu için SmartScreen uyarısı çıkabilir: *Ek bilgi → Yine de çalıştır*.
 
 **Ses dosyasına kaydet:** tepsi ikonu → sağ tık → "Seçimi ses dosyasına kaydet" (WAV).
 

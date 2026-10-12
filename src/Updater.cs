@@ -130,9 +130,33 @@ namespace SesliOkuma
             return info;
         }
 
+        // True when this copy was put in place by our installer (Inno writes InstallLocation for the AppId).
+        // Portable copies (zip, Scoop) must not turn into a second, installed copy on update.
+        public static bool IsInstalledCopy
+        {
+            get
+            {
+                try
+                {
+                    using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\{B7E9A1C4-5D2F-4E7A-9C3B-6F1D8E2A4B50}_is1"))
+                    {
+                        var location = key == null ? null : key.GetValue("InstallLocation") as string;
+                        return location != null && string.Equals(location.TrimEnd('\\'), AppSettings.AppDir, StringComparison.OrdinalIgnoreCase);
+                    }
+                }
+                catch { return true; }
+            }
+        }
+
         public void DownloadAndInstall(UpdateInfo info)
         {
             if (_busy || info == null) return;
+            if (!IsInstalledCopy)
+            {
+                Logger.Log("portable copy: opening the release page instead of installing");
+                try { Process.Start(new ProcessStartInfo(info.PageUrl) { UseShellExecute = true }); } catch { }
+                return;
+            }
             _busy = true;
             string dir = Path.Combine(Path.GetTempPath(), "SesliOkuma-Update");
             Directory.CreateDirectory(dir);
