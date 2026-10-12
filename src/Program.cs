@@ -76,7 +76,8 @@ namespace SesliOkuma
             Reader.PauseAnnounce = delegate(bool paused) { if (paused) Announcer.Speak(L.T("A11yPaused")); };
             Announcer.LocalFallback = delegate(string text)
             {
-                if (!LocalTrVoice.IsInstalled || L.Lang != "tr") return false;
+                // While a reading session is live (even paused) the bridge state belongs to it; cues fall back to SAPI then.
+                if (!LocalTrVoice.IsInstalled || L.Lang != "tr" || Reader.Active) return false;
                 try { LocalTrVoice.Preview(text, 0); return true; } catch { return false; }
             };
             L.Lang = Settings.Language.Length > 0 ? Settings.Language : L.DetectSystemLanguage();
@@ -216,7 +217,7 @@ namespace SesliOkuma
 
         // Status cues follow the UI language with a SAPI voice (instant); the local voice is only a fallback,
         // so announcements never come out in the wrong language again.
-        void UpdateAnnouncerVoice()
+        public void UpdateAnnouncerVoice()
         {
             VoiceInfo natural = null, classic = null, multi = null;
             foreach (var v in Engine.Voices)
@@ -227,7 +228,8 @@ namespace SesliOkuma
             }
             var pick = natural ?? classic ?? multi;
             Announcer.VoiceToken = pick != null ? pick.Token : null;
-            Logger.Log("announcer voice=" + (pick != null ? pick.Name : "(local/default)"));
+            Announcer.PreferLocal = L.Lang == "tr" && LocalTrVoice.IsInstalled && Settings.PrimaryVoiceId == LocalTrVoice.VoiceId;
+            Logger.Log("announcer voice=" + (Announcer.PreferLocal ? "Ema (local)" : (pick != null ? pick.Name : "(local/default)")));
         }
 
         public void RefreshVoices()
@@ -349,6 +351,7 @@ namespace SesliOkuma
                     else
                         Settings.OtherVoiceId = voice.Id;
                     Settings.Save();
+                    UpdateAnnouncerVoice();
                     Reader.SwitchVoice(voice);
                     if (!Reader.Active || Reader.Paused) Announcer.Speak(L.F("A11yVoice", voice.ShortName));
                     if (_settings != null && !_settings.IsDisposed) _settings.SyncFromApp();

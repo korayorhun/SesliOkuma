@@ -415,6 +415,7 @@ namespace SesliOkuma
             if (primary) _app.Settings.PrimaryVoiceId = picker.Selected.Id;
             else _app.Settings.OtherVoiceId = picker.Selected.Id;
             _app.Settings.Save();
+            _app.UpdateAnnouncerVoice();
             Flash(L.F("VoiceSelected", picker.Selected.ShortName));
         }
 
