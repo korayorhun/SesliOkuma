@@ -117,17 +117,32 @@ namespace SesliOkuma
             return (string)_mWav.Invoke(null, new object[] { text, SpeedFor(rate), 42L, path });
         }
 
+        static bool _previewIsCue;
+
         // Short standalone playback for the panel's listen buttons.
-        public static void Preview(string text, int rate)
+        public static void Preview(string text, int rate) { StartPreview(text, rate, false); }
+
+        // Accessibility status cue: same playback path, but never counts as "speaking", so the next hotkey
+        // press reads instead of merely silencing the cue.
+        public static void Cue(string text) { StartPreview(text, 0, true); }
+
+        static void StartPreview(string text, int rate, bool cue)
         {
             StopPreview();
             if (EnsureLoaded() != null) return;
-            lock (Gate) { _preview = new LocalSession(text, rate); }
+            lock (Gate) { _preview = new LocalSession(text, rate); _previewIsCue = cue; }
         }
 
         public static bool IsPreviewPlaying
         {
-            get { var p = _preview; return p != null && !p.FinishedPlayback && p.Error == null; }
+            get { var p = _preview; return p != null && !_previewIsCue && !p.FinishedPlayback && p.Error == null; }
+        }
+
+        public static void StopCue() { if (_previewIsCue) StopPreview(); }
+
+        public static bool IsCuePlaying
+        {
+            get { var p = _preview; return p != null && _previewIsCue && !p.FinishedPlayback && p.Error == null; }
         }
 
         public static void StopPreview()

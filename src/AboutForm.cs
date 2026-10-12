@@ -105,6 +105,36 @@ namespace SesliOkuma
             Controls.Add(new Panel { BackColor = Theme.Border, Location = new Point(Pad, y), Size = new Size(W - 2 * Pad, 1) });
             y += 18;
 
+            var copyLog = new FlatButton { Borderless = true, Accent = true, Size = new Size(W - 2 * Pad, 26), Text = L.T("CopyLog") };
+            copyLog.Location = new Point(Pad, y);
+            copyLog.Click += delegate
+            {
+                try
+                {
+                    string logPath = Path.Combine(AppSettings.DataDir, "SesliOkuma.log");
+                    var lines = File.Exists(logPath) ? File.ReadAllLines(logPath) : new string[0];
+                    int take = Math.Min(80, lines.Length);
+                    var sbLog = new System.Text.StringBuilder();
+                    string os = Environment.OSVersion.ToString();
+                    try
+                    {
+                        // Without an app manifest Windows reports 6.2 to .NET; the registry has the real build.
+                        using (var k = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion"))
+                            if (k != null) os = "Windows " + k.GetValue("DisplayVersion") + " (build " + k.GetValue("CurrentBuild") + "." + k.GetValue("UBR") + ")";
+                    }
+                    catch { }
+                    sbLog.AppendLine("SesliOkuma v" + Updater.CurrentVersionText + " / " + os + " / " + (Environment.Is64BitProcess ? "x64" : "x86"));
+                    for (int i = lines.Length - take; i < lines.Length; i++) sbLog.AppendLine(lines[i]);
+                    Clipboard.SetDataObject(sbLog.ToString(), true, 10, 100);
+                    copyLog.Text = L.T("CopyLogDone");
+                    var back = new System.Windows.Forms.Timer { Interval = 2000 };
+                    back.Tick += delegate { back.Stop(); back.Dispose(); copyLog.Text = L.T("CopyLog"); };
+                    back.Start();
+                }
+                catch (Exception ex) { Logger.Log("copy log: " + ex.Message); }
+            };
+            Controls.Add(copyLog);
+            y += 30;
             _support.Text = "♥  " + L.T("Support");
             _support.Location = new Point(Pad, y);
             _support.Click += delegate { Open(SupportLink.Url); };

@@ -22,10 +22,11 @@ namespace SesliOkuma
         [DllImport("user32.dll")] static extern int GetMessageTime();
         [DllImport("user32.dll")] static extern uint GetClipboardSequenceNumber();
 
-        const int WM_HOTKEY = 0x0312, WM_SHOWSETTINGS = 0x8000 + 41, WM_SHOWABOUT = 0x8000 + 42, WM_READFILE = 0x8000 + 43;
+        const int WM_HOTKEY = 0x0312, WM_SHOWSETTINGS = 0x8000 + 41, WM_SHOWABOUT = 0x8000 + 42, WM_READFILE = 0x8000 + 43, WM_OCRRECT = 0x8000 + 44;
+        const int HK_PREV = 3, HK_NEXT = 4, HK_SLOWER = 5, HK_FASTER = 6, HK_OCR = 7;
         static string PendingPath { get { return System.IO.Path.Combine(AppSettings.DataDir, "pending-read.txt"); } }
         const string HostTitle = "SesliOkumaHost";
-        const uint MOD_NOREPEAT = 0x4000;
+        const uint MOD_NOREPEAT = 0x4000, MOD_ALT = 0x1, MOD_CONTROL = 0x2;
         const byte VK_CONTROL = 0x11, VK_MENU = 0x12, VK_SHIFT = 0x10, VK_LWIN = 0x5B, VK_C = 0x43;
         const uint KEYEVENTF_KEYUP = 2;
 
@@ -46,7 +47,7 @@ namespace SesliOkuma
         readonly NotifyIcon _tray = new NotifyIcon();
         readonly System.Windows.Forms.Timer _pulse = new System.Windows.Forms.Timer();
         readonly System.Windows.Forms.Timer _updateTimer = new System.Windows.Forms.Timer();
-        ToolStripMenuItem _miSettings, _miStop, _miBar, _miSave, _miTranslate, _miUpdates, _miAbout, _miExit, _miA11y, _miGuide;
+        ToolStripMenuItem _miSettings, _miStop, _miBar, _miSave, _miTranslate, _miOcr, _miUpdates, _miAbout, _miExit, _miA11y, _miGuide;
         bool _barHidden;
         public bool BarHiddenByUser { get { return _barHidden; } }
         AboutForm _about;
@@ -60,6 +61,10 @@ namespace SesliOkuma
         DateTime _pressStart;
         int _lastPressTick = int.MinValue;
         bool _holdCandidate;
+        bool _firstPressActive;                 // a reading was already going at the first press of a double press
+        Action _balloonAction;                  // what a click on the current balloon does (null = default)
+        DateTime _balloonActionUtc;
+        bool _ocrPackOffered;
 
         public TrayApp()
         {
@@ -71,14 +76,16 @@ namespace SesliOkuma
             Theme.Load();
             Theme.SetReadingSize(Settings.FontSize);
             PromoteTrayIconOnce();
+            System.Threading.ThreadPool.QueueUserWorkItem(delegate { AudioDuck.RecoverAfterCrash(); });
             Announcer.Enabled = Settings.AccessibilityMode;
+            SpeakIntroIfScreenReader();
             // Only the pause gets a cue: resuming is audible by itself, a cue would talk over the reading.
             Reader.PauseAnnounce = delegate(bool paused) { if (paused) Announcer.Speak(L.T("A11yPaused")); };
             Announcer.LocalFallback = delegate(string text)
             {
                 // While a reading session is live (even paused) the bridge state belongs to it; cues fall back to SAPI then.
                 if (!LocalTrVoice.IsInstalled || L.Lang != "tr" || Reader.Active) return false;
-                try { LocalTrVoice.Preview(text, 0); return true; } catch { return false; }
+                try { LocalTrVoice.Cue(text); return true; } catch { return false; }
             };
             L.Lang = Settings.Language.Length > 0 ? Settings.Language : L.DetectSystemLanguage();
             BuildIcons();
@@ -95,17 +102,21 @@ namespace SesliOkuma
             _miUpdates = new ToolStripMenuItem(); _miUpdates.Click += delegate { Updater.CheckAsync(true); ShowSettings(); };
             _miSave = new ToolStripMenuItem(); _miSave.Click += delegate { SaveSelectionToWav(); };
             _miTranslate = new ToolStripMenuItem(); _miTranslate.Click += delegate { TranslateSelection(); };
+            _miOcr = new ToolStripMenuItem(); _miOcr.Click += delegate { ReadScreenRegion(); };
             _miA11y = new ToolStripMenuItem(); _miA11y.Click += delegate { SetAccessibilityMode(!Settings.AccessibilityMode); };
-            _miGuide = new ToolStripMenuItem(); _miGuide.Click += delegate { Announcer.Speak(L.F("A11yGuide", Hotkey.ToString(), Settings.TranslateHotkey)); };
+            _miGuide = new ToolStripMenuItem(); _miGuide.Click += delegate { Announcer.Speak(GuideText()); };
             _miAbout = new ToolStripMenuItem(); _miAbout.Click += delegate { ShowAbout(); };
             _miExit = new ToolStripMenuItem(); _miExit.Click += delegate { Close(); };
-            menu.Items.AddRange(new ToolStripItem[] { _miSettings, _miStop, _miBar, _miTranslate, _miSave, new ToolStripSeparator(), _miA11y, _miGuide, _miUpdates, _miAbout, new ToolStripSeparator(), _miExit });
+            menu.Items.AddRange(new ToolStripItem[] { _miSettings, _miStop, _miBar, _miTranslate, _miOcr, _miSave, new ToolStripSeparator(), _miA11y, _miGuide, _miUpdates, _miAbout, new ToolStripSeparator(), _miExit });
             menu.Opening += delegate { _miBar.Visible = Reader.Active && _barHidden; };
             _tray.ContextMenuStrip = menu;
             ApplyTexts();
 
             Reader = new Reader(Engine, delegate { return Settings.Rate; });
             Reader.Changed += SyncBar;
+            Reader.Changed += SyncReadingKeys;
+            Reader.Changed += SyncDucking;
+            Reader.Completed += OnReadingCompleted;
             Reader.Finished += SyncBar;
             _gesture.Interval = 40;
             _gesture.Tick += GestureTick;
@@ -128,6 +139,8 @@ namespace SesliOkuma
                 _tray.ShowBalloonTip(6000, "Sesli Okuma", L.F("HotkeyFailBalloon", Hotkey.ToString()), ToolTipIcon.Warning);
             HotkeyDef trDef;
             if (HotkeyDef.TryParse(Settings.TranslateHotkey, out trDef)) ApplyTranslateHotkey(trDef);
+            HotkeyDef ocrDef;
+            if (HotkeyDef.TryParse(Settings.OcrHotkey, out ocrDef)) ApplyOcrHotkey(ocrDef);
 
             Updater = new Updater(this);
             Updater.UpdateFound += delegate (UpdateInfo u)
@@ -136,7 +149,13 @@ namespace SesliOkuma
                 _tray.ShowBalloonTip(8000, L.F("Ready", u.Version.ToString(3)), L.T("UpdateClick"), ToolTipIcon.Info);
             };
             Updater.CheckFinished += delegate { Settings.LastUpdateCheck = DateTime.UtcNow; Settings.Save(); };
-            _tray.BalloonTipClicked += delegate { if (Updater.Available != null) ShowSettings(); };
+            _tray.BalloonTipClicked += delegate
+            {
+                var action = _balloonAction;
+                _balloonAction = null;
+                if (action != null && (DateTime.UtcNow - _balloonActionUtc).TotalSeconds < 30) { action(); return; }
+                if (Updater.Available != null) ShowSettings();
+            };
             _updateTimer.Interval = 60 * 1000;
             _updateTimer.Tick += delegate
             {
@@ -164,6 +183,7 @@ namespace SesliOkuma
             _miSave.Text = L.T("SaveAudio") + "…";
             _miBar.Text = L.T("ShowBarMenu");
             _miTranslate.Text = L.T("TranslateRead");
+            _miOcr.Text = L.T("OcrMenu");
             _miAbout.Text = L.T("About") + "…";
             _miExit.Text = L.T("Exit");
         }
@@ -242,8 +262,11 @@ namespace SesliOkuma
         public VoiceInfo PrimaryVoice { get { return Engine.FindById(Settings.PrimaryVoiceId); } }
         public VoiceInfo OtherVoice { get { return Engine.FindById(Settings.OtherVoiceId); } }
 
+        bool _lastSpeechWasHover;
+
         public void Speak(string text, VoiceInfo voice)
         {
+            _lastSpeechWasHover = false;
             Reader.Stop(false);
             try { Engine.Speak(text, voice, Settings.Rate); }
             catch (Exception ex) { Logger.Log("speak failed: " + ex.Message); }
@@ -276,6 +299,198 @@ namespace SesliOkuma
         }
 
         public void ShowBarAgain() { _barHidden = false; SyncBar(); }
+
+        [DllImport("user32.dll")] static extern bool SystemParametersInfo(uint action, uint param, ref bool value, uint ignore);
+
+        // One-time spoken welcome when a screen reader is already running on first launch.
+        void SpeakIntroIfScreenReader()
+        {
+            if (Settings.IntroSpoken) return;
+            Settings.IntroSpoken = true; Settings.Save();
+            bool active = false;
+            try { SystemParametersInfo(0x0046, 0, ref active, 0); } catch { }
+            if (!active) return;
+            Logger.Log("screen reader detected; speaking intro");
+            var timer = new System.Windows.Forms.Timer { Interval = 2500 };
+            timer.Tick += delegate
+            {
+                timer.Stop(); timer.Dispose();
+                bool old = Announcer.Enabled;
+                Announcer.Enabled = true;
+                Announcer.Speak(L.F("A11yIntro", Hotkey.ToString()));
+                Announcer.Enabled = old;
+            };
+            timer.Start();
+        }
+
+        bool _duckedNow;
+
+        void SyncDucking()
+        {
+            bool want = Settings.DuckOthers && Reader.Active && !Reader.Paused;
+            if (want == _duckedNow) return;
+            _duckedNow = want;
+            System.Threading.ThreadPool.QueueUserWorkItem(delegate { AudioDuck.Set(want); });
+        }
+
+        public void ApplyReadingKeysSetting() { SyncReadingKeys(); }
+        public void ApplyDuckingSetting() { SyncDucking(); }
+
+        bool _readKeysOn;
+
+        // Arrow shortcuts exist only while something is being read, so they never collide with other apps otherwise.
+        void SyncReadingKeys()
+        {
+            bool want = Reader.Active && Settings.ReadingKeys;
+            if (want == _readKeysOn) return;
+            _readKeysOn = want;
+            if (want)
+            {
+                RegisterHotKey(Handle, HK_PREV, MOD_CONTROL | MOD_ALT, (uint)Keys.Left);
+                RegisterHotKey(Handle, HK_NEXT, MOD_CONTROL | MOD_ALT, (uint)Keys.Right);
+                RegisterHotKey(Handle, HK_SLOWER, MOD_CONTROL | MOD_ALT, (uint)Keys.Down);
+                RegisterHotKey(Handle, HK_FASTER, MOD_CONTROL | MOD_ALT, (uint)Keys.Up);
+            }
+            else
+                for (int id = HK_PREV; id <= HK_FASTER; id++) UnregisterHotKey(Handle, id);
+        }
+
+        readonly System.Collections.Generic.List<string> _queue = new System.Collections.Generic.List<string>();
+
+        static long Fnv(string text)
+        {
+            unchecked
+            {
+                ulong h = 14695981039346656037UL;
+                foreach (char ch in text) { h ^= ch; h *= 1099511628211UL; }
+                return (long)h;
+            }
+        }
+
+        // Natural end: play the next queued text, or remember nothing. User stop: remember the position, drop the queue.
+        void OnReadingCompleted(bool finished)
+        {
+            string full = Reader.FullText;
+            if (finished)
+            {
+                if (Settings.LastTextHash != 0) { Settings.LastTextHash = 0; Settings.LastOffset = 0; Settings.Save(); }
+                if (_queue.Count > 0)
+                {
+                    string next = _queue[0]; _queue.RemoveAt(0);
+                    SyncQueueBadge();
+                    BeginInvoke(new Action(delegate { Read(next, "queue"); }));
+                }
+            }
+            else
+            {
+                if (_queue.Count > 0) { _queue.Clear(); SyncQueueBadge(); }
+                int off = Reader.LastStopOffset;
+                if (full.Length > 400 && off > full.Length / 20 && off < full.Length * 95 / 100)
+                {
+                    Settings.LastTextHash = Fnv(full); Settings.LastOffset = off; Settings.LastStopTicks = DateTime.UtcNow.Ticks; Settings.Save();
+                }
+            }
+        }
+
+        RegionOverlay _overlay;
+
+        [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+        [StructLayout(LayoutKind.Sequential)] struct RECT { public int Left, Top, Right, Bottom; }
+
+        public void ReadScreenRegion()
+        {
+            if (_overlay != null && !_overlay.IsDisposed) return;
+            try
+            {
+                IntPtr previous = GetForegroundWindow();
+                RECT wr;
+                Rectangle window = previous != IntPtr.Zero && GetWindowRect(previous, out wr) && wr.Right > wr.Left
+                    ? Rectangle.FromLTRB(wr.Left, wr.Top, wr.Right, wr.Bottom) : Screen.PrimaryScreen.Bounds;
+                var shot = ScreenOcr.CaptureVirtualScreen();
+                _overlay = new RegionOverlay(shot, previous, window, OcrAndRead);
+                _overlay.Show();
+                _overlay.Activate();
+                Announcer.Speak(L.T("OcrHint"));
+            }
+            catch (Exception ex) { Logger.Log("ocr overlay: " + ex.Message); }
+        }
+
+        // Takes ownership of the bitmap.
+        void OcrAndRead(Bitmap crop)
+        {
+            string lang = Settings.PrimaryLang;
+            System.Threading.ThreadPool.QueueUserWorkItem(delegate
+            {
+                string error = null, text = null;
+                bool primaryMissing = false;
+                try { text = ScreenOcr.Recognize(crop, lang, out primaryMissing, out error); }
+                catch (Exception ex) { error = ex.Message; }
+                finally { crop.Dispose(); }
+                string captured = text;
+                bool offer = primaryMissing;
+                try
+                {
+                    BeginInvoke(new Action(delegate
+                    {
+                        if (captured != null) Read(captured, "ocr");
+                        else
+                        {
+                            _tray.ShowBalloonTip(4000, "Sesli Okuma", L.T("OcrNoText"), ToolTipIcon.Warning);
+                            Announcer.Speak(L.T("OcrNoText"));
+                        }
+                        if (offer) OfferOcrLanguagePack(lang);
+                    }));
+                }
+                catch { }
+            });
+        }
+
+        // Windows has no OCR recognizer for the primary language yet: offer to add it once per session.
+        void OfferOcrLanguagePack(string lang)
+        {
+            if (_ocrPackOffered || WindowsVoicePack.CultureFor(lang) == null) return;
+            _ocrPackOffered = true;
+            _balloonAction = delegate
+            {
+                WindowsVoicePack.InstallOcrAsync(this, lang,
+                    delegate { _tray.ShowBalloonTip(4000, "Sesli Okuma", L.T("OcrPackDone"), ToolTipIcon.Info); },
+                    delegate(string err) { _tray.ShowBalloonTip(5000, "Sesli Okuma", L.F("OcrPackFailed", err), ToolTipIcon.Warning); });
+            };
+            _balloonActionUtc = DateTime.UtcNow;
+            _tray.ShowBalloonTip(8000, "Sesli Okuma", L.F("OcrPackOffer", L.NativeName(lang)), ToolTipIcon.Info);
+        }
+
+        bool _ocrRegistered;
+
+        public bool ApplyOcrHotkey(HotkeyDef def)
+        {
+            if (_ocrRegistered) { UnregisterHotKey(Handle, HK_OCR); _ocrRegistered = false; }
+            if (!RegisterHotKey(Handle, HK_OCR, def.Modifiers | MOD_NOREPEAT, (uint)def.Key)) return false;
+            _ocrRegistered = true; Settings.OcrHotkey = def.ToString(); Settings.Save();
+            Logger.Log("ocr hotkey registered: " + def);
+            return true;
+        }
+
+        void QueueSelection()
+        {
+            string text = GrabText();
+            if (text == null || text.Trim().Length == 0) { Announcer.Speak(L.T("NoTextToSave")); return; }
+            _queue.Add(text);
+            Logger.Log("queued len=" + text.Length + " (" + _queue.Count + " waiting)");
+            SyncQueueBadge();
+            Announcer.Speak(L.F("QueueAdded", _queue.Count));
+        }
+
+        void SyncQueueBadge() { if (_bar != null && !_bar.IsDisposed) _bar.SetQueue(_queue.Count); }
+
+        void NudgeRate(int delta)
+        {
+            int rate = Math.Max(-4, Math.Min(6, Settings.Rate + delta));
+            if (rate == Settings.Rate) return;
+            Settings.Rate = rate; Settings.Save();
+            Reader.Restart();
+            if (_settings != null && !_settings.IsDisposed) _settings.SyncFromApp();
+        }
 
         // A tray-only app that Windows hides into the overflow looks "gone"; promote our icon to the
         // visible area once (Windows 11 NotifyIconSettings). If the user hides it later, we respect that.
@@ -312,13 +527,18 @@ namespace SesliOkuma
         }
 
         // Accessibility mode: additive only - spoken status cues for windowless events. Normal mode stays untouched.
+        string GuideText()
+        {
+            return L.F("A11yGuide", Hotkey.ToString(), Settings.TranslateHotkey) + " " + L.F("A11yGuide2", Settings.OcrHotkey) + " " + L.T("A11yQueueTip");
+        }
+
         public void SetAccessibilityMode(bool on)
         {
             Settings.AccessibilityMode = on; Settings.Save();
             Announcer.Enabled = on;
             _miA11y.Checked = on; _miGuide.Visible = on;
             Logger.Log("accessibility mode " + (on ? "on" : "off"));
-            if (on) { Announcer.Speak(L.T("A11yOn") + ". " + L.F("A11yGuide", Hotkey.ToString(), Settings.TranslateHotkey)); }
+            if (on) { Announcer.Speak(L.T("A11yOn") + ". " + GuideText()); }
             else { Announcer.Enabled = true; Announcer.Speak(L.T("A11yOff")); Announcer.Enabled = false; }
             if (_settings != null && !_settings.IsDisposed) _settings.SyncFromApp();
         }
@@ -398,7 +618,7 @@ namespace SesliOkuma
         {
             var pt = Cursor.Position;
             if (pt != _hoverLast) { _hoverLast = pt; _hoverSince = DateTime.UtcNow; return; }
-            if ((DateTime.UtcNow - _hoverSince).TotalMilliseconds < 700 || Reader.Active || Engine.IsSpeaking) return;
+            if ((DateTime.UtcNow - _hoverSince).TotalMilliseconds < 700 || Reader.Active || Engine.IsSpeaking || Announcer.IsBusy) return;
             _hoverSince = DateTime.UtcNow.AddYears(1);       // one shot per rest position
             try
             {
@@ -417,6 +637,7 @@ namespace SesliOkuma
                 name = name.Trim();
                 if (name.Length == 0 || name.Length > 200 || name == _hoverSpoken) return;
                 _hoverSpoken = name;
+                _lastSpeechWasHover = true;
                 bool primary = TextLanguage.IsPrimary(name, Settings.PrimaryLang);
                 Engine.Speak(name, primary ? (PrimaryVoice ?? OtherVoice) : (OtherVoice ?? PrimaryVoice), Settings.Rate);
             }
@@ -427,7 +648,12 @@ namespace SesliOkuma
         {
             if (!_holdCandidate) { _gesture.Stop(); return; }
             bool down = (GetAsyncKeyState((int)Hotkey.Key) & 0x8000) != 0;
-            if (!down) { _holdCandidate = false; _gesture.Stop(); Reader.Stop(false); Logger.Log("stopped"); return; }
+            if (!down)
+            {
+                // Released quickly: wait out the double-press window first, so a second press can queue instead of stop.
+                if ((DateTime.UtcNow - _pressStart).TotalMilliseconds < 460) return;
+                _holdCandidate = false; _gesture.Stop(); Reader.Stop(false); Logger.Log("stopped"); return;
+            }
             if ((DateTime.UtcNow - _pressStart).TotalMilliseconds >= 600) { _holdCandidate = false; _gesture.Stop(); Reader.TogglePause(); Logger.Log(Reader.Paused ? "paused" : "resumed"); }
         }
 
@@ -551,7 +777,24 @@ namespace SesliOkuma
 
         protected override void WndProc(ref Message m)
         {
-            if (m.Msg == WM_HOTKEY) { if (m.WParam.ToInt32() == 2) TranslateSelection(); else OnHotkey(); return; }
+            if (m.Msg == WM_HOTKEY)
+            {
+                int hk = m.WParam.ToInt32();
+                if (hk == 2) TranslateSelection();
+                else if (hk == HK_PREV) Reader.Back();
+                else if (hk == HK_NEXT) Reader.Skip();
+                else if (hk == HK_SLOWER) NudgeRate(-2);
+                else if (hk == HK_FASTER) NudgeRate(2);
+                else if (hk == HK_OCR) ReadScreenRegion();
+                else OnHotkey();
+                return;
+            }
+            if (m.Msg == WM_OCRRECT)
+            {
+                var rect = new Rectangle(m.WParam.ToInt32() >> 16, m.WParam.ToInt32() & 0xFFFF, m.LParam.ToInt32() >> 16, m.LParam.ToInt32() & 0xFFFF);
+                using (var shot = ScreenOcr.CaptureVirtualScreen()) { var crop = ScreenOcr.Crop(shot, rect); if (crop != null) OcrAndRead(crop); }
+                return;
+            }
             if (m.Msg == WM_SHOWSETTINGS) { ToggleSettings(); return; }
             if (m.Msg == WM_SHOWABOUT) { ShowAbout(); return; }
             if (m.Msg == WM_READFILE) { ReadPendingFile(); return; }
@@ -639,8 +882,9 @@ namespace SesliOkuma
             bool dbl = _lastPressTick != int.MinValue && (tick - _lastPressTick) >= 0 && (tick - _lastPressTick) < 450;
             if (dbl)
             {
-                // double press: read the clipboard
+                // double press: queue the selection while reading; read the clipboard otherwise
                 _lastPressTick = int.MinValue; _holdCandidate = false; _gesture.Stop();
+                if (_firstPressActive) { QueueSelection(); return; }
                 Reader.Stop(false);
                 string clip = GetClipboardText();
                 if (clip == null || clip.Trim().Length == 0) { Logger.Log("double press: clipboard empty"); return; }
@@ -648,13 +892,19 @@ namespace SesliOkuma
                 return;
             }
             _lastPressTick = tick;
+            _firstPressActive = Reader.Active;
             if (Reader.Active)
             {
                 // quick release = stop, hold = pause/resume (decided by GestureTick)
                 _pressStart = now; _holdCandidate = true; _gesture.Start();
                 return;
             }
-            if (Engine.IsSpeaking) { Engine.Stop(); Logger.Log("stopped"); return; }
+            if (Engine.IsSpeaking)
+            {
+                Engine.Stop();
+                // A preview is stopped by the press; hover speech just gives way to the reading.
+                if (!_lastSpeechWasHover) { Logger.Log("stopped"); return; }
+            }
             ReadSelection();
         }
 
@@ -722,11 +972,20 @@ namespace SesliOkuma
             }
         }
 
-        void Read(string text, string source)        {
+        void Read(string text, string source)
+        {
+            Announcer.Silence();
             bool primary = TextLanguage.IsPrimary(text, Settings.PrimaryLang);
             VoiceInfo v = primary ? (PrimaryVoice ?? OtherVoice) : (OtherVoice ?? PrimaryVoice);
             _barHidden = false;
-            Reader.Start(text, v);
+            // The same long text read again continues where it was stopped - unless it is re-read right away,
+            // which means "again from the start".
+            string norm = Reader.NormalizeText(text);
+            bool justStopped = (DateTime.UtcNow - new DateTime(Math.Max(0L, Math.Min(Settings.LastStopTicks, DateTime.MaxValue.Ticks)), DateTimeKind.Utc)).TotalSeconds < 30;
+            int resume = !justStopped && Settings.LastTextHash != 0 && Settings.LastTextHash == Fnv(norm)
+                && Settings.LastOffset > norm.Length / 20 && Settings.LastOffset < norm.Length * 95 / 100 ? Settings.LastOffset : 0;
+            if (resume > 0) { Logger.Log("resume at " + resume + "/" + norm.Length); Reader.StartAtNorm(text, v, resume); }
+            else Reader.Start(text, v);
             Settings.CountWords(text);
             Logger.Log("read " + source + " " + (primary ? Settings.PrimaryLang : "other") + " len=" + text.Length + " sentences=" + Reader.SentenceCount + " app=" + ForegroundApp());
         }
@@ -734,12 +993,14 @@ namespace SesliOkuma
         {
             if (_hotkeyRegistered) UnregisterHotKey(Handle, 1);
             if (_trRegistered) UnregisterHotKey(Handle, 2);
+            for (int id = HK_PREV; id <= HK_OCR; id++) UnregisterHotKey(Handle, id);
             _pulse.Stop();
             _gesture.Stop();
             _hover.Stop();
             _updateTimer.Stop();
             Reader.Stop(false);
             Engine.Stop();
+            AudioDuck.Set(false);
             _tray.Visible = false;
             base.OnFormClosed(e);
         }
@@ -759,6 +1020,8 @@ namespace SesliOkuma
                     if (h != IntPtr.Zero) PostMessage(h, readFile != null ? WM_READFILE : (wantAbout ? WM_SHOWABOUT : WM_SHOWSETTINGS), IntPtr.Zero, IntPtr.Zero);
                     return;
                 }
+                Application.ThreadException += delegate(object s, ThreadExceptionEventArgs e) { Logger.Log("ui error: " + e.Exception); try { AudioDuck.Set(false); } catch { } };
+                AppDomain.CurrentDomain.UnhandledException += delegate(object s, UnhandledExceptionEventArgs e) { Logger.Log("fatal: " + e.ExceptionObject); try { AudioDuck.Set(false); } catch { } };
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 var app = new TrayApp();

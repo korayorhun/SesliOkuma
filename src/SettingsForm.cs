@@ -34,6 +34,9 @@ namespace SesliOkuma
         readonly ToggleSwitch _readerBar = new ToggleSwitch();
         readonly ToggleSwitch _hover = new ToggleSwitch();
         readonly ToggleSwitch _a11y = new ToggleSwitch();
+        readonly ToggleSwitch _readKeys = new ToggleSwitch();
+        readonly ToggleSwitch _duck = new ToggleSwitch();
+        readonly HotkeyBox _ocrKey = new HotkeyBox { HintKey = "HotkeyHintSimple" };
         readonly Label _stats = new Label();
         readonly HotkeyBox _trHotkey = new HotkeyBox { HintKey = "HotkeyHintSimple" };
         readonly TextBox _key = new TextBox();
@@ -193,7 +196,22 @@ namespace SesliOkuma
             _hover.CheckedChanged += delegate { if (!_loading) { _app.Settings.HoverRead = _hover.Checked; _app.Settings.Save(); _app.SyncHover(); } };
             a = ToggleRowIn(_adv, L.T("A11yMode"), _a11y, a);
             _a11y.CheckedChanged += delegate { if (!_loading) _app.SetAccessibilityMode(_a11y.Checked); };
+            a = ToggleRowIn(_adv, L.T("ReadKeysRow"), _readKeys, a);
+            _readKeys.CheckedChanged += delegate { if (!_loading) { _app.Settings.ReadingKeys = _readKeys.Checked; _app.Settings.Save(); _app.ApplyReadingKeysSetting(); } };
+            a = ToggleRowIn(_adv, L.T("DuckRow"), _duck, a);
+            _duck.CheckedChanged += delegate { if (!_loading) { _app.Settings.DuckOthers = _duck.Checked; _app.Settings.Save(); _app.ApplyDuckingSetting(); } };
             a += 8;
+            a = CaptionIn(_adv, L.T("OcrHotkeyCap"), a);
+            _ocrKey.SetBounds(Pad, a, W - 2 * Pad, Row);
+            _ocrKey.HotkeyChosen += delegate(HotkeyDef def)
+            {
+                if (_app.ApplyOcrHotkey(def)) { _ocrKey.Value = def; Flash(L.F("HotkeySaved", def.ToString())); }
+                else { HotkeyDef cur; if (HotkeyDef.TryParse(_app.Settings.OcrHotkey, out cur)) _ocrKey.Value = cur; Flash(L.F("HotkeyTaken", def.ToString())); }
+            };
+            _ocrKey.NeedModifier += delegate { Flash(L.T("HotkeyNeedMod")); };
+            _adv.Controls.Add(_ocrKey);
+            a += Row + Gap + 4;
+
             a = CaptionIn(_adv, L.T("TranslateHotkey"), a);
             _trHotkey.SetBounds(Pad, a, W - 2 * Pad, Row);
             _trHotkey.HotkeyChosen += delegate (HotkeyDef def) { if (_app.ApplyTranslateHotkey(def)) { _trHotkey.Value = def; Flash(L.F("HotkeySaved", def.ToString())); } else { _trHotkey.Value = _app.TranslateHotkey; Flash(L.F("HotkeyTaken", def.ToString())); } };
@@ -461,6 +479,10 @@ namespace SesliOkuma
             _trHotkey.Value = _app.TranslateHotkey;
             _key.Text = _app.Settings.DeepLKey;
             _a11y.Checked = _app.Settings.AccessibilityMode;
+            _readKeys.Checked = _app.Settings.ReadingKeys;
+            _duck.Checked = _app.Settings.DuckOthers;
+            HotkeyDef od; if (HotkeyDef.TryParse(_app.Settings.OcrHotkey, out od)) _ocrKey.Value = od;
+            _ocrKey.AccessibleName = L.T("OcrHotkeyCap") + ", " + _app.Settings.OcrHotkey;
             _hotkey.AccessibleName = L.T("Hotkey") + ", " + _app.Hotkey;
             _trHotkey.AccessibleName = L.T("TranslateHotkey") + ", " + _app.Settings.TranslateHotkey;
             _rate.AccessibleName = L.T("Speed") + ", " + RateText(_rate.Value);

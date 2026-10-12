@@ -33,5 +33,28 @@ namespace SesliOkuma
             }
             catch (Exception ex) { _failed = true; Logger.Log("announcer: " + ex.Message); }
         }
+
+        public static bool IsBusy
+        {
+            get
+            {
+                if (LocalTrVoice.IsCuePlaying) return true;
+                if (_voice == null) return false;
+                try
+                {
+                    object status = _voice.GetType().InvokeMember("Status", BindingFlags.GetProperty, null, _voice, null);
+                    return (int)status.GetType().InvokeMember("RunningState", BindingFlags.GetProperty, null, status, null) == 2;
+                }
+                catch { return false; }
+            }
+        }
+
+        // Cuts a cue that is still talking, so real reading never overlaps it.
+        public static void Silence()
+        {
+            try { LocalTrVoice.StopCue(); } catch { }
+            if (_voice == null) return;
+            try { _voice.GetType().InvokeMember("Speak", BindingFlags.InvokeMethod, null, _voice, new object[] { "", 3 }); } catch { }
+        }
     }
 }

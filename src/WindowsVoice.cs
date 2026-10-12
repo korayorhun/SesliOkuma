@@ -54,12 +54,26 @@ namespace SesliOkuma
         {
             string culture = CultureFor(lang2);
             if (culture == null) { failed("unsupported language"); return; }
+            InstallCapabilityAsync(ui, "Language.TextToSpeech~~~" + culture + "~0.0.1.0", done, failed);
+        }
+
+        // Windows' own OCR recognizer for a language (used by "read from screen").
+        public static void InstallOcrAsync(Control ui, string lang2, Action done, Action<string> failed)
+        {
+            string culture = CultureFor(lang2);
+            if (culture == null) { failed("unsupported language"); return; }
+            InstallCapabilityAsync(ui, "Language.OCR~~~" + culture + "~0.0.1.0", done, failed);
+        }
+
+        static void InstallCapabilityAsync(Control ui, string capability, Action done, Action<string> failed)
+        {
+            string culture = capability;
             var t = new Thread(delegate ()
             {
                 string err = null;
                 try
                 {
-                    string cmd = "$ErrorActionPreference='Stop'; Add-WindowsCapability -Online -Name 'Language.TextToSpeech~~~" + culture + "~0.0.1.0' | Out-Null; exit 0";
+                    string cmd = "$ErrorActionPreference='Stop'; Add-WindowsCapability -Online -Name '" + capability + "' | Out-Null; exit 0";
                     var psi = new ProcessStartInfo("powershell.exe", "-NoProfile -NonInteractive -WindowStyle Hidden -Command \"" + cmd + "\"")
                     { Verb = "runas", UseShellExecute = true, WindowStyle = ProcessWindowStyle.Hidden };
                     using (var p = Process.Start(psi))

@@ -33,6 +33,8 @@ namespace SesliOkuma
         public event Action Changed;          // start/stop/pause state
         public event Action Position;         // word position advanced (highlight)
         public event Action Finished;
+        public event Action<bool> Completed;           // true = reached the end; false = stopped by the user
+        public int LastStopOffset { get; private set; }
         public static Action<bool> PauseAnnounce;   // accessibility mode: true = paused, false = resumed
 
         public Reader(SpeechEngine engine, Func<int> rate) { _engine = engine; _rate = rate; }
@@ -67,6 +69,23 @@ namespace SesliOkuma
         }
 
         public void Start(string text, VoiceInfo voice) { StartAt(text, voice, 0); }
+
+        public static string NormalizeText(string text) { return Normalize(text); }
+
+        // Starts at an offset that is already in normalized coordinates (resume from a saved position).
+        public void StartAtNorm(string text, VoiceInfo voice, int normOffset)
+        {
+            Stop(false);
+            _full = Normalize(text);
+            if (_full.Length == 0) return;
+            _voice = voice;
+            int off = Math.Max(0, Math.Min(normOffset, _full.Length - 1));
+            while (off > 0 && !char.IsWhiteSpace(_full[off - 1])) off--;
+            _sentences.Clear(); _sentences.AddRange(Spans(_full));
+            Active = true; Paused = false;
+            SpeakFrom(off, off == 0);
+            if (Changed != null) Changed();
+        }
 
         public void StartAt(string text, VoiceInfo voice, int rawOffset)
         {
@@ -266,13 +285,14 @@ namespace SesliOkuma
         public void Stop(bool finished)
         {
             bool was = Active;
-            if (was) Logger.Log(finished ? "reader finished" : "reader stopped");
+            if (was) { LastStopOffset = CharIndex; Logger.Log(finished ? "reader finished" : "reader stopped"); }
             Active = false; Paused = false; _lastIndex = -1; _lastLocalIndex = 0; _lastLocalLen = 0;
             if (_local != null) { _local.Dispose(); _local = null; }
             try { _engine.Resume(); } catch { }
             _engine.Stop();
             if (was && Changed != null) Changed();
             if (was && Finished != null) Finished();
+            if (was && Completed != null) Completed(finished);
         }
     }
 
@@ -309,11 +329,15 @@ namespace SesliOkuma
         readonly FlatButton _hide = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE921" };
         readonly FlatButton _close = new FlatButton { IconGlyph = true, Borderless = true, Size = new Size(28, 34), Text = "\uE711" };
         readonly Label _text = new Label { AutoSize = false, TextAlign = ContentAlignment.MiddleLeft, BackColor = Color.Transparent, AutoEllipsis = true };
+        readonly Label _eta = new Label { AutoSize = false, TextAlign = ContentAlignment.MiddleRight, BackColor = Color.Transparent };
+        int _queueCount;
         readonly RichTextBox _full = new RichTextBox();
         const int W = 560, RowH = 46, TextMax = 150;
         int _hlStart = -1, _hlLen;
         string _loadedText = "";
         public event EventHandler HideRequested;
+
+        public void SetQueue(int count) { _queueCount = count; if (!IsDisposed) Sync(); }
 
         public ReaderBar(Reader reader, AppSettings settings, Action rateChanged)
         {
@@ -323,10 +347,11 @@ namespace SesliOkuma
             Text = "SesliOkumaReaderBar";
 
             _text.Font = Theme.Body; _text.ForeColor = Theme.Text;
+            _eta.Font = Theme.Small; _eta.ForeColor = Theme.Muted;
             _full.ReadOnly = true; _full.HideSelection = true; _full.BorderStyle = BorderStyle.None; _full.BackColor = Theme.Bg; _full.ForeColor = Theme.Text;
             _full.Font = Theme.Reading; _full.WordWrap = true; _full.ScrollBars = RichTextBoxScrollBars.None; _full.TabStop = false;
             _full.Visible = false; _full.Cursor = Cursors.Default;
-            Controls.AddRange(new Control[] { _back, _pause, _skip, _speed, _fontMinus, _fontPlus, _translate, _voiceBtn, _text, _expand, _hide, _close, _full });
+            Controls.AddRange(new Control[] { _back, _pause, _skip, _speed, _fontMinus, _fontPlus, _translate, _voiceBtn, _text, _eta, _expand, _hide, _close, _full });
 
             _pause.Click += delegate
             {
@@ -457,6 +482,8 @@ namespace SesliOkuma
             _text.Visible = !exp;
             _full.Visible = exp;
             _fontMinus.Visible = exp; _fontPlus.Visible = exp; _translate.Visible = exp; _voiceBtn.Visible = exp;
+            _eta.Visible = exp;
+            UpdateEta();
 
             int h;
             if (exp)
@@ -482,6 +509,7 @@ namespace SesliOkuma
                 _fontPlus.Location = new Point(94, rowY);
                 _translate.Location = new Point(126, rowY);
                 _voiceBtn.Location = new Point(154, rowY);
+                _eta.SetBounds(W - 14 - 28 - 4 - 28 - 4 - 28 - 86, rowY + 9, 82, 16);
                 _expand.Location = new Point(W - 14 - 28 - 4 - 28 - 4 - 28, rowY);
                 _hide.Location = new Point(W - 14 - 28 - 4 - 28, rowY);
                 _close.Location = new Point(W - 14 - 28, rowY);
@@ -504,9 +532,25 @@ namespace SesliOkuma
             Invalidate();
         }
 
+        // Rough remaining-time from the voice's pace; a queue badge joins it when texts are waiting.
+        void UpdateEta()
+        {
+            string tail = "";
+            if (_reader.Active && _loadedText.Length > 200)
+            {
+                double cps = 15.5 * (1.0 + _settings.Rate * 0.1);
+                int secs = (int)((1.0 - _reader.Fraction) * _loadedText.Length / Math.Max(6.0, cps));
+                if (secs >= 5) tail = "\u2248" + (secs / 60) + ":" + (secs % 60).ToString("00");
+            }
+            string badge = _queueCount > 0 ? "+" + _queueCount + (tail.Length > 0 ? "  \u00b7  " : "") : "";
+            string text = badge + tail;
+            if (_eta.Text != text) _eta.Text = text;
+        }
+
         void SyncHighlight()
         {
             if (IsDisposed || !_reader.Active) return;
+            UpdateEta();
             if (_settings.BarExpanded && _full.Visible && _loadedText.Length > 0)
             {
                 int start = _reader.CharIndex;

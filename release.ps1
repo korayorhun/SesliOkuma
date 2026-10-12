@@ -22,7 +22,7 @@ Compress-Archive -Path (Join-Path $d 'SesliOkuma.exe'), (Join-Path $d 'README.md
 $sha = (Get-FileHash $setup -Algorithm SHA256).Hash
 $shaFile = "$setup.sha256"
 "$sha  $(Split-Path -Leaf $setup)" | Set-Content $shaFile -Encoding ASCII -NoNewline
-git add -A; git commit -q -m "release: v$Version" -m "Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"; git tag "v$Version"; git push -q; git push -q --tags
+git add -A; git commit -q -m "release: v$Version" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"; git tag "v$Version"; git push -q; git push -q --tags
 if (-not $Notes) { $Notes = "Sesli Okuma $Version" }
 gh release create "v$Version" $setup $shaFile $portable --title "Sesli Okuma $Version" --notes $Notes
 Write-Host "Released v$Version  SHA256=$sha"

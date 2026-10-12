@@ -27,6 +27,13 @@ namespace SesliOkuma
         public bool EmaDefaultApplied = false;
         public bool AccessibilityMode = false;
         public bool TrayPromoted = false;
+        public bool ReadingKeys = true;
+        public bool DuckOthers = false;
+        public bool IntroSpoken = false;
+        public string OcrHotkey = "Ctrl+Alt+R";
+        public long LastTextHash = 0;
+        public int LastOffset = 0;
+        public long LastStopTicks = 0;
         public bool AutoUpdate = true;
         public bool ShowReaderBar = true;
         public string SkipVersion = "";
@@ -79,6 +86,13 @@ namespace SesliOkuma
                         case "EmaDefaultApplied": s.EmaDefaultApplied = val == "1"; break;
                         case "AccessibilityMode": s.AccessibilityMode = val == "1"; break;
                         case "TrayPromoted": s.TrayPromoted = val == "1"; break;
+                        case "ReadingKeys": s.ReadingKeys = val != "0"; break;
+                        case "DuckOthers": s.DuckOthers = val == "1"; break;
+                        case "IntroSpoken": s.IntroSpoken = val == "1"; break;
+                        case "OcrHotkey": s.OcrHotkey = val; break;
+                        case "LastTextHash": long.TryParse(val, out s.LastTextHash); break;
+                        case "LastOffset": int.TryParse(val, out s.LastOffset); break;
+                        case "LastStopTicks": long.TryParse(val, out s.LastStopTicks); break;
                         case "AutoUpdate": s.AutoUpdate = val != "0"; break;
                         case "ShowReaderBar": s.ShowReaderBar = val != "0"; break;
                         case "SkipVersion": s.SkipVersion = val; break;
@@ -106,7 +120,7 @@ namespace SesliOkuma
             {
                 File.WriteAllLines(FilePath, new[] {
                     "PrimaryVoice=" + PrimaryVoiceId, "OtherVoice=" + OtherVoiceId, "PrimaryLang=" + PrimaryLang,
-                    "Language=" + Language, "Hotkey=" + Hotkey, "TranslateHotkey=" + TranslateHotkey, "DeepLKey=" + DeepLKey, "AdvancedOpen=" + (AdvancedOpen ? "1" : "0"), "HoverRead=" + (HoverRead ? "1" : "0"), "BarX=" + BarX, "BarY=" + BarY, "BarExpanded=" + (BarExpanded ? "1" : "0"), "WordsTotal=" + WordsTotal, "WordsToday=" + WordsToday, "StatsDay=" + StatsDay, "Rate=" + Rate, "FontSize=" + FontSize.ToString(CultureInfo.InvariantCulture), "EmaDefaultApplied=" + (EmaDefaultApplied ? "1" : "0"), "AccessibilityMode=" + (AccessibilityMode ? "1" : "0"), "TrayPromoted=" + (TrayPromoted ? "1" : "0"),
+                    "Language=" + Language, "Hotkey=" + Hotkey, "TranslateHotkey=" + TranslateHotkey, "DeepLKey=" + DeepLKey, "AdvancedOpen=" + (AdvancedOpen ? "1" : "0"), "HoverRead=" + (HoverRead ? "1" : "0"), "BarX=" + BarX, "BarY=" + BarY, "BarExpanded=" + (BarExpanded ? "1" : "0"), "WordsTotal=" + WordsTotal, "WordsToday=" + WordsToday, "StatsDay=" + StatsDay, "Rate=" + Rate, "FontSize=" + FontSize.ToString(CultureInfo.InvariantCulture), "EmaDefaultApplied=" + (EmaDefaultApplied ? "1" : "0"), "AccessibilityMode=" + (AccessibilityMode ? "1" : "0"), "TrayPromoted=" + (TrayPromoted ? "1" : "0"), "ReadingKeys=" + (ReadingKeys ? "1" : "0"), "DuckOthers=" + (DuckOthers ? "1" : "0"), "IntroSpoken=" + (IntroSpoken ? "1" : "0"), "OcrHotkey=" + OcrHotkey, "LastTextHash=" + LastTextHash, "LastOffset=" + LastOffset, "LastStopTicks=" + LastStopTicks,
                     "AutoUpdate=" + (AutoUpdate ? "1" : "0"), "ShowReaderBar=" + (ShowReaderBar ? "1" : "0"), "SkipVersion=" + SkipVersion, "LastUpdateCheck=" + LastUpdateCheck.ToString("o") });
             }
             catch (Exception ex) { Logger.Log("settings save: " + ex.Message); }
