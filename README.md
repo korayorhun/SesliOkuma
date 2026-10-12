@@ -48,6 +48,8 @@ Sesli Okuma is built to work well for blind and low-vision users, following a sc
 - **Welcome for screen-reader users** — when Narrator, NVDA or JAWS is running on first start, Sesli Okuma introduces itself and its shortcut once, by voice.
 ## Install
 
+**Try the Turkish voice first, right in your browser:** https://korayorhun.github.io/SesliOkuma/demo/ (runs locally in the browser; also on [Hugging Face](https://huggingface.co/spaces/korhun/turkce-dogal-ses)).
+
 The quickest way, built into Windows 10/11:
 
 ```
@@ -109,6 +111,8 @@ Windows 10/11 için küçük bir sistem tepsisi aracı: **herhangi bir uygulamad
 - Kurulum yönetici yetkisi istemez; **veri toplamaz**. Ayarlar ve günlük: `%LOCALAPPDATA%\SesliOkuma\`.
 
 **Dosya oku:** Explorer'da bir `.txt` / `.md` dosyasına sağ tık → *Sesli Okuma ile oku*. **Erişilebilirlik** (Gelişmiş): fareyle üzerine gelince oku, yüksek kontrast desteği, okunan kelime sayacı. **Taşınabilir sürüm:** Releases'ta zip.
+
+**Önce tarayıcıda deneyin:** https://korayorhun.github.io/SesliOkuma/demo/ (Türkçe ses doğrudan tarayıcınızda çalışır).
 
 **Kurulum:** en kolayı, Windows'ta hazır gelen winget ile — Komut İstemi'ne `winget install KorayOrhun.SesliOkuma` yazın. Ya da [Releases](https://github.com/korayorhun/SesliOkuma/releases/latest) sayfasından `SesliOkuma-Setup-x.y.z.exe`. İmzasız olduğu için SmartScreen uyarısı çıkabilir: *Ek bilgi → Yine de çalıştır*.
 
