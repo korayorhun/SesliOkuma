@@ -1,0 +1,39 @@
+name: nuget
+
+# Publishes SesliOkuma.Engine to nuget.org from the .nupkg that release.ps1 attaches to every
+# GitHub release. Authentication is nuget.org Trusted Publishing: the policy on nuget.org names
+# this repository and this workflow file, and NuGet/login exchanges the job's OIDC identity token
+# for a short-lived API key. No long-lived secret is stored on GitHub or on a developer machine.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag whose .nupkg to publish (for example v2.0.0)
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the package attached to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ github.event.release.tag_name || inputs.tag }}"
+          gh release download "$tag" --repo "${{ github.repository }}" --pattern '*.nupkg' --dir pkg
+          ls -l pkg
+
+      - name: NuGet login (Trusted Publishing)
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: korayorhun
+
+      - name: Push to nuget.org
+        run: dotnet nuget push pkg/*.nupkg --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate

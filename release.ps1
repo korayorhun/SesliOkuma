@@ -24,7 +24,8 @@ Compress-Archive -Path (Join-Path $d 'SesliOkuma.exe'), (Join-Path $d 'SesliOkum
 $sha = (Get-FileHash $setup -Algorithm SHA256).Hash
 $shaFile = "$setup.sha256"
 "$sha  $(Split-Path -Leaf $setup)" | Set-Content $shaFile -Encoding ASCII -NoNewline
-# NuGet package of the engine; pushed to nuget.org only when NUGET_API_KEY is set, always attached to the release.
+# NuGet package of the engine, attached to the release. nuget.org publication happens in
+# .github/workflows/nuget-publish.yml (Trusted Publishing, triggered by the release); a local push runs only when NUGET_API_KEY is set.
 $nuget = Join-Path $d 'tools\nuget\nuget.exe'
 if (-not (Test-Path $nuget)) { New-Item -ItemType Directory -Force (Split-Path $nuget) | Out-Null; Invoke-WebRequest 'https://dist.nuget.org/win-x86-commandline/latest/nuget.exe' -OutFile $nuget -UseBasicParsing }
 & $nuget pack (Join-Path $d 'nuget\SesliOkuma.Engine.nuspec') -Version $Version -OutputDirectory (Join-Path $d 'dist') -NoPackageAnalysis | Out-Null
@@ -35,7 +36,7 @@ if (-not $Notes) { $Notes = "Sesli Okuma $Version" }
 gh release create "v$Version" $setup $shaFile $portable $nupkg --title "Sesli Okuma $Version" --notes $Notes
 Write-Host "Released v$Version  SHA256=$sha"
 if ($env:NUGET_API_KEY) { & $nuget push $nupkg -Source https://api.nuget.org/v3/index.json -ApiKey $env:NUGET_API_KEY -NonInteractive -SkipDuplicate; Write-Host "nuget.org: SesliOkuma.Engine $Version pushed" }
-else { Write-Host "nuget.org: set NUGET_API_KEY to publish SesliOkuma.Engine (package attached to the GitHub release)" }
+else { Write-Host "nuget.org: the nuget-publish workflow publishes SesliOkuma.Engine $Version from this release" }
 # winget: submit the update PR (the package is published); manifests go to temp, not into the repo.
 if (Get-Command wingetcreate -ErrorAction SilentlyContinue) {
   $env:WINGET_CREATE_GITHUB_TOKEN = (gh auth token)
