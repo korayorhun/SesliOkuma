@@ -16,8 +16,10 @@ namespace SesliOkuma
         readonly SpeechEngine _engine;
         readonly Func<int> _rate;
         readonly List<Span> _sentences = new List<Span>();
-        string _full = "";
-        int _segAOffset, _segBOffset;         // char offsets of the two queued segments within _full
+        string _full = "";                    // what the bar shows (normalized whitespace)
+        SpeechMap _map = new SpeechMap();     // what the voice gets, with offsets mapped both ways
+        int _segAOffset, _segBOffset;         // spoken-text offsets of the two queued segments
+        int _curLen;                          // length on screen of the word being spoken (SAPI path)
         int _streamA = -1, _streamB = -1;
         DateTime _launched, _lastSpeaking;
         bool _sawSpeaking;
@@ -79,6 +81,7 @@ namespace SesliOkuma
             _full = Normalize(text);
             if (_full.Length == 0) return;
             _voice = voice;
+            BuildMap();
             int off = Math.Max(0, Math.Min(normOffset, _full.Length - 1));
             while (off > 0 && !char.IsWhiteSpace(_full[off - 1])) off--;
             _sentences.Clear(); _sentences.AddRange(Spans(_full));
@@ -93,6 +96,7 @@ namespace SesliOkuma
             _full = Normalize(text);
             if (_full.Length == 0) return;
             _voice = voice;
+            BuildMap();
             int startOff = MapOffset(text, rawOffset);
             _sentences.Clear(); _sentences.AddRange(Spans(_full));
             Active = true; Paused = false;
@@ -109,12 +113,22 @@ namespace SesliOkuma
             return off;
         }
 
-        int _localBase;
+        int _localBase;                       // spoken-text offset where the local session's text starts
 
-        // Speaks _full from the given offset. With leadIn, a short first chunk keeps online voices fast.
+        // The speech layer depends on the voice's language (English words are respelled for Turkish voices only).
+        void BuildMap()
+        {
+            _map = SpeechText.Build(_full, _voice != null ? _voice.Lang2 : "");
+            if (_map.Replacements > 0) Logger.Log("speech layer: " + _map.Replacements + " change(s), e.g. " + _map.Examples);
+        }
+
+        // Speaks from the given on-screen offset. With leadIn, a short first chunk keeps online voices fast.
         void SpeakFrom(int offset, bool leadIn)
         {
-            string rest = _full.Substring(offset);
+            int sOff = _map.ToSpoken(offset);
+            string spoken = _map.Spoken;
+            if (sOff >= spoken.Length || spoken.Substring(sOff).Trim().Length == 0) { Logger.Log("reader: nothing left to speak from " + offset); Stop(true); return; }
+            string rest = spoken.Substring(sOff);
             _launched = DateTime.UtcNow; _lastSpeaking = DateTime.UtcNow; _sawSpeaking = false;
             _streamB = -1;
             if (_local != null) { _local.Dispose(); _local = null; }
@@ -124,7 +138,7 @@ namespace SesliOkuma
                 string error = LocalTrVoice.EnsureLoaded();
                 Logger.Log("reader start off=" + offset + " len=" + rest.Length + " voice=local");
                 if (error != null) { Logger.Log("local voice unavailable: " + error); Stop(false); return; }
-                _localBase = offset;
+                _localBase = sOff;
                 _local = new LocalSession(rest, _rate());
                 return;
             }
@@ -139,15 +153,15 @@ namespace SesliOkuma
             {
                 if (cut > 0)
                 {
-                    _segAOffset = offset;
+                    _segAOffset = sOff;
                     _streamA = _engine.Speak(rest.Substring(0, cut + 1), _voice, _rate());
-                    _segBOffset = offset + cut + 1;
-                    while (_segBOffset < _full.Length && _full[_segBOffset] == ' ') _segBOffset++;
-                    _streamB = _engine.SpeakQueued(_full.Substring(_segBOffset));
+                    _segBOffset = sOff + cut + 1;
+                    while (_segBOffset < spoken.Length && spoken[_segBOffset] == ' ') _segBOffset++;
+                    _streamB = _engine.SpeakQueued(spoken.Substring(_segBOffset));
                 }
                 else
                 {
-                    _segAOffset = offset;
+                    _segAOffset = sOff;
                     _streamA = _engine.Speak(rest, _voice, _rate());
                 }
             }
@@ -163,20 +177,27 @@ namespace SesliOkuma
                 if (IsLocal)
                 {
                     int ls, ll;
-                    if (_local != null && _local.CurrentWord(out ls, out ll)) { _lastLocalIndex = _localBase + ls; _lastLocalLen = ll; }
+                    if (_local != null && _local.CurrentWord(out ls, out ll))
+                    {
+                        int fs, fl;
+                        _map.Locate(_localBase + ls, ll, out fs, out fl);
+                        _lastLocalIndex = fs; _lastLocalLen = fl;
+                    }
                     return Math.Min(Math.Max(0, _lastLocalIndex), Math.Max(0, _full.Length - 1));
                 }
                 int stream = _engine.CurrentStream;
                 int baseOff = (stream == _streamB && _streamB >= 0) ? _segBOffset : _segAOffset;
                 int pos = _engine.WordPosition;
-                int idx = baseOff + Math.Max(0, pos);
-                return Math.Min(idx, Math.Max(0, _full.Length - 1));
+                int fullStart, fullLen;
+                _map.Locate(baseOff + Math.Max(0, pos), _engine.WordLength, out fullStart, out fullLen);
+                _curLen = fullLen;
+                return Math.Min(fullStart, Math.Max(0, _full.Length - 1));
             }
         }
 
         int _lastLocalIndex, _lastLocalLen;
 
-        public int WordLength { get { if (IsLocal) return Math.Max(0, _lastLocalLen); int l = _engine.WordLength; return l > 0 ? l : 0; } }
+        public int WordLength { get { return Math.Max(0, IsLocal ? _lastLocalLen : _curLen); } }
         public int SentenceCount { get { return _sentences.Count; } }
         public double Fraction { get { return _full.Length > 0 ? Math.Min(1.0, CharIndex / (double)_full.Length) : 0; } }
 
@@ -268,6 +289,7 @@ namespace SesliOkuma
             if (voice == null) return;
             _voice = voice;
             if (!Active || _sentences.Count == 0) return;
+            BuildMap();
             if (Paused) Paused = false;
             SpeakFrom(_sentences[SentenceIndexAt(CharIndex)].Start, false);
             if (Changed != null) Changed();

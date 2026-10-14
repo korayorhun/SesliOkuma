@@ -41,6 +41,7 @@ namespace SesliOkuma
         readonly HotkeyBox _trHotkey = new HotkeyBox { HintKey = "HotkeyHintSimple" };
         readonly TextBox _key = new TextBox();
         readonly Label _checkLink = new Label();
+        readonly Label _dictLink = new Label();
         readonly Label _status = new Label();
         readonly Label _version = new Label();
         readonly Timer _statusTimer = new Timer();
@@ -200,6 +201,11 @@ namespace SesliOkuma
             _readKeys.CheckedChanged += delegate { if (!_loading) { _app.Settings.ReadingKeys = _readKeys.Checked; _app.Settings.Save(); _app.ApplyReadingKeysSetting(); } };
             a = ToggleRowIn(_adv, L.T("DuckRow"), _duck, a);
             _duck.CheckedChanged += delegate { if (!_loading) { _app.Settings.DuckOthers = _duck.Checked; _app.Settings.Save(); _app.ApplyDuckingSetting(); } };
+            _dictLink.Font = Theme.Small; _dictLink.ForeColor = Theme.Accent; _dictLink.BackColor = Color.Transparent; _dictLink.Cursor = Cursors.Hand; _dictLink.AutoSize = false;
+            _dictLink.Text = L.T("PronDict"); _dictLink.SetBounds(Pad, a, W - 2 * Pad, 18);
+            _dictLink.Click += delegate { UserDictionary.OpenInEditor(); };
+            _adv.Controls.Add(_dictLink);
+            a += 18 + Gap;
             a += 8;
             a = CaptionIn(_adv, L.T("OcrHotkeyCap"), a);
             _ocrKey.SetBounds(Pad, a, W - 2 * Pad, Row);

@@ -58,8 +58,24 @@ function readNumber(s) {
   return words;
 }
 
+// Symbols a voice would otherwise name or skip: list bullets end the previous line, emoji are dropped,
+// degrees / areas / currency are spelled out the way a Turkish reader says them.
+const BULLET = /(^|\s)[•◦▪▫‣●○■□►▶▸➢➤✓✔✗✘→⇒·*\-–—]+(?=\s|$)/g;
+const PICTOGRAPH = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{2122}\u{00AE}\u{00A9}]/gu;
+export function symbols(text) {
+  text = text.replace(BULLET, (m, lead, offset, s) => (/[\p{L}\p{N}]\s*$/u.test(s.slice(0, offset)) ? '. ' : ' '));
+  text = text.replace(PICTOGRAPH, ' ');
+  text = text.replace(/(\d)\s?[°⁰º]\s?[Cc]\b/g, '$1 santigrat derece').replace(/(\d)\s?[°⁰º]\s?[Ff]\b/g, '$1 fahrenhayt derece').replace(/(\d)\s?[°⁰º]/g, '$1 derece');
+  text = text.replace(/\b(km|cm|mm|dm|m)²/g, (m, u) => ({ km: 'kilometrekare', cm: 'santimetrekare', mm: 'milimetrekare', dm: 'desimetrekare', m: 'metrekare' })[u])
+             .replace(/\b(km|cm|mm|dm|m)³/g, (m, u) => ({ km: 'kilometreküp', cm: 'santimetreküp', mm: 'milimetreküp', dm: 'desimetreküp', m: 'metreküp' })[u]);
+  const money = { '€': 'avro', '$': 'dolar', '£': 'sterlin', '₺': 'lira', '¥': 'yen' };
+  text = text.replace(/([€$£₺¥])\s?(\d[\d.,]*)/g, (m, c, n) => `${n} ${money[c]}`).replace(/(\d[\d.,]*)\s?([€$£₺¥])/g, (m, n, c) => `${n} ${money[c]}`);
+  return text.replace(/~\s?(?=\d)/g, 'yaklaşık ').replace(/\s&\s/g, ' ve ');
+}
+
 // Compact stand-in for normalizer-tr: dates, times, percentages, money/units, numbers.
 export function normalize(text) {
+  text = symbols(text);
   text = text.replace(/\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/g, (m, d, mo, y) =>
     +mo >= 1 && +mo <= 12 && +d >= 1 && +d <= 31 ? `${numberWords(+d)} ${MONTHS[+mo - 1]} ${numberWords(+y)}` : m);
   text = text.replace(/\b([01]?\d|2[0-4]):([0-5]\d)\b/g, (m, h, mi) => numberWords(+h) + (+mi ? ' ' + numberWords(+mi) : ''));
