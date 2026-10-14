@@ -7,6 +7,8 @@ Set-Location $d
 if (git status --porcelain) { throw "Working tree not clean - commit or stash first." }
 $ai = Join-Path $d 'src\AssemblyInfo.cs'
 (Get-Content $ai -Raw) -replace 'Assembly(File)?Version\("[\d\.]+"\)', ('Assembly$1Version("' + $Version + '.0")') | Set-Content $ai -Encoding UTF8 -NoNewline
+$eai = Join-Path $d 'engine\AssemblyInfo.cs'
+(Get-Content $eai -Raw) -replace 'Assembly(File)?Version\("[\d\.]+"\)', ('Assembly$1Version("' + $Version + '.0")') | Set-Content $eai -Encoding UTF8 -NoNewline
 $iss = Join-Path $d 'installer\SesliOkuma.iss'
 (Get-Content $iss -Raw) -replace '#define MyAppVersion "[\d\.]+"', ('#define MyAppVersion "' + $Version + '"') | Set-Content $iss -Encoding UTF8 -NoNewline
 $env:SESLIOKUMA_NOSTART = '1'
@@ -18,14 +20,22 @@ $setup = Join-Path $d "dist\SesliOkuma-Setup-$Version.exe"
 if (-not (Test-Path $setup)) { throw "Installer not produced: $setup" }
 $portable = Join-Path $d "dist\SesliOkuma-Portable-$Version.zip"
 if (Test-Path $portable) { [IO.File]::Delete($portable) }
-Compress-Archive -Path (Join-Path $d 'SesliOkuma.exe'), (Join-Path $d 'README.md'), (Join-Path $d 'LICENSE.txt') -DestinationPath $portable
+Compress-Archive -Path (Join-Path $d 'SesliOkuma.exe'), (Join-Path $d 'SesliOkuma.Engine.dll'), (Join-Path $d 'README.md'), (Join-Path $d 'LICENSE.txt') -DestinationPath $portable
 $sha = (Get-FileHash $setup -Algorithm SHA256).Hash
 $shaFile = "$setup.sha256"
 "$sha  $(Split-Path -Leaf $setup)" | Set-Content $shaFile -Encoding ASCII -NoNewline
-git add -A; git commit -q -m "release: v$Version" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"; git tag "v$Version"; git push -q; git push -q --tags
+# NuGet package of the engine; pushed to nuget.org only when NUGET_API_KEY is set, always attached to the release.
+$nuget = Join-Path $d 'tools\nuget\nuget.exe'
+if (-not (Test-Path $nuget)) { New-Item -ItemType Directory -Force (Split-Path $nuget) | Out-Null; Invoke-WebRequest 'https://dist.nuget.org/win-x86-commandline/latest/nuget.exe' -OutFile $nuget -UseBasicParsing }
+& $nuget pack (Join-Path $d 'nuget\SesliOkuma.Engine.nuspec') -Version $Version -OutputDirectory (Join-Path $d 'dist') -NoPackageAnalysis | Out-Null
+$nupkg = Join-Path $d "dist\SesliOkuma.Engine.$Version.nupkg"
+if (-not (Test-Path $nupkg)) { throw "NuGet package not produced: $nupkg" }
+git add -A; git commit -q -m "release: v$Version" -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"; git tag "v$Version"; git push -q; git push -q --tags
 if (-not $Notes) { $Notes = "Sesli Okuma $Version" }
-gh release create "v$Version" $setup $shaFile $portable --title "Sesli Okuma $Version" --notes $Notes
+gh release create "v$Version" $setup $shaFile $portable $nupkg --title "Sesli Okuma $Version" --notes $Notes
 Write-Host "Released v$Version  SHA256=$sha"
+if ($env:NUGET_API_KEY) { & $nuget push $nupkg -Source https://api.nuget.org/v3/index.json -ApiKey $env:NUGET_API_KEY -NonInteractive -SkipDuplicate; Write-Host "nuget.org: SesliOkuma.Engine $Version pushed" }
+else { Write-Host "nuget.org: set NUGET_API_KEY to publish SesliOkuma.Engine (package attached to the GitHub release)" }
 # winget: submit the update PR (the package is published); manifests go to temp, not into the repo.
 if (Get-Command wingetcreate -ErrorAction SilentlyContinue) {
   $env:WINGET_CREATE_GITHUB_TOKEN = (gh auth token)

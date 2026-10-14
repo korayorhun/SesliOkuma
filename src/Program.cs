@@ -1,3 +1,4 @@
+using SesliOkuma.Engine;
 using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
@@ -13,22 +14,18 @@ namespace SesliOkuma
     {
         [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr hWnd, int id, uint mods, uint vk);
         [DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr hWnd, int id);
-        [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string cls, string title);
         [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
         [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vk);
         [DllImport("user32.dll")] static extern int GetMessageTime();
-        [DllImport("user32.dll")] static extern uint GetClipboardSequenceNumber();
 
         const int WM_HOTKEY = 0x0312, WM_SHOWSETTINGS = 0x8000 + 41, WM_SHOWABOUT = 0x8000 + 42, WM_READFILE = 0x8000 + 43, WM_OCRRECT = 0x8000 + 44;
         const int HK_PREV = 3, HK_NEXT = 4, HK_SLOWER = 5, HK_FASTER = 6, HK_OCR = 7;
         static string PendingPath { get { return System.IO.Path.Combine(AppSettings.DataDir, "pending-read.txt"); } }
         const string HostTitle = "SesliOkumaHost";
         const uint MOD_NOREPEAT = 0x4000, MOD_ALT = 0x1, MOD_CONTROL = 0x2;
-        const byte VK_CONTROL = 0x11, VK_MENU = 0x12, VK_SHIFT = 0x10, VK_LWIN = 0x5B, VK_C = 0x43;
-        const uint KEYEVENTF_KEYUP = 2;
 
         public readonly SpeechEngine Engine = new SpeechEngine();
         public readonly AppSettings Settings = AppSettings.Load();
@@ -233,6 +230,7 @@ namespace SesliOkuma
             if (changed) Settings.Save();
             UpdateAnnouncerVoice();
             LocalTrVoice.WarmUpAsync();
+            SpeechText.WarmUp();
             Logger.Log("voices ready; primary=" + Settings.PrimaryLang + " voice=" + (PrimaryVoice != null ? PrimaryVoice.Name : "-") + " other=" + (OtherVoice != null ? OtherVoice.Name : "-"));
         }
 
@@ -592,25 +590,6 @@ namespace SesliOkuma
             Logger.Log("read edited len=" + text.Length + " off=" + offset);
         }
 
-        // Paragraph under the mouse pointer (used when nothing is selected).
-        static string GetParagraphUnderMouse()
-        {
-            try
-            {
-                var pt = Cursor.Position;
-                AutomationElement el = AutomationElement.FromPoint(new System.Windows.Point(pt.X, pt.Y));
-                if (el == null) return null;
-                object pat;
-                if (!el.TryGetCurrentPattern(TextPattern.Pattern, out pat)) return null;
-                var tp = (TextPattern)pat;
-                TextPatternRange range = tp.RangeFromPoint(new System.Windows.Point(pt.X, pt.Y));
-                if (range == null) return null;
-                range.ExpandToEnclosingUnit(TextUnit.Paragraph);
-                string s = range.GetText(-1);
-                return (s != null && s.Trim().Length > 0) ? s : null;
-            }
-            catch (Exception ex) { Logger.Log("UIA point: " + ex.Message); return null; }
-        }
 
         public void SyncHover() { if (Settings.HoverRead) _hover.Start(); else { _hover.Stop(); _hoverSpoken = ""; } }
 
@@ -704,13 +683,25 @@ namespace SesliOkuma
             TranslateText(text);
         }
 
+        string TranslateErrorText(TranslationError e)
+        {
+            switch (e.Kind)
+            {
+                case TranslationErrorKind.Unsupported: return L.F("TranslateUnsupported", L.NativeName(Settings.PrimaryLang));
+                case TranslationErrorKind.BadKey: return L.T("TranslateBadKey");
+                case TranslationErrorKind.DeepLQuota: return L.T("TranslateQuota");
+                case TranslationErrorKind.FreeQuota: return L.T("FreeQuota");
+            }
+            return e.Message;
+        }
+
         public void TranslateText(string text)
         {
             Reader.Stop(false);
             if (_card == null || _card.IsDisposed) { _card = new TranslationCard(AppIcon); _card.PlayClicked += delegate { var v2 = Engine.BestFor(Settings.PrimaryLang) ?? PrimaryVoice; Reader.Start(_card.Translation, v2); }; }
             string targetName = L.NativeName(Settings.PrimaryLang) == Settings.PrimaryLang ? Settings.PrimaryLang.ToUpperInvariant() : L.NativeName(Settings.PrimaryLang);
             _card.SetContent("", targetName, text, "", true); _card.Show();
-            Translator.TranslateAsync(this, Settings.DeepLKey, text, Settings.PrimaryLang,
+            Translator.TranslateAsync(Settings.DeepLKey, text, Settings.PrimaryLang,
                 delegate (string translated, string detected)
                 {
                     if (_card == null || _card.IsDisposed) return;
@@ -718,8 +709,9 @@ namespace SesliOkuma
                     var v = Engine.BestFor(Settings.PrimaryLang) ?? PrimaryVoice;
                     Reader.Start(translated, v);
                 },
-                delegate (string err)
+                delegate (TranslationError terr)
                 {
+                    string err = TranslateErrorText(terr);
                     if (_card != null && !_card.IsDisposed) _card.SetContent("", targetName, text, L.F("TranslateFailed", err), false);
                     else _tray.ShowBalloonTip(6000, L.T("TranslateRead"), L.F("TranslateFailed", err), ToolTipIcon.Warning);
                 });
@@ -802,79 +794,10 @@ namespace SesliOkuma
             base.WndProc(ref m);
         }
 
-        static readonly string[] CopyFirstApps = { "Code", "Cursor", "VSCodium", "windsurf", "Code - Insiders" };
-        static bool IsCopyFirstApp()
-        {
-            string app = ForegroundApp();
-            foreach (string a in CopyFirstApps) if (string.Equals(app, a, StringComparison.OrdinalIgnoreCase)) return true;
-            return false;
-        }
 
-        static string ForegroundApp()
-        {
-            try { uint pid; GetWindowThreadProcessId(GetForegroundWindow(), out pid); return System.Diagnostics.Process.GetProcessById((int)pid).ProcessName; }
-            catch { return "?"; }
-        }
 
-        static string GetSelectionViaUia()
-        {
-            try
-            {
-                AutomationElement el = AutomationElement.FocusedElement;
-                if (el == null) return null;
-                object pat;
-                if (el.TryGetCurrentPattern(TextPattern.Pattern, out pat))
-                {
-                    TextPatternRange[] ranges = ((TextPattern)pat).GetSelection();
-                    if (ranges != null && ranges.Length > 0)
-                    {
-                        string s = ranges[0].GetText(-1);
-                        if (s != null && s.Trim().Length > 0) return s;
-                    }
-                }
-            }
-            catch (Exception ex) { Logger.Log("UIA: " + ex.Message); }
-            return null;
-        }
 
-        string GetSelectionViaCopy()
-        {
-            string old = null;
-            try { if (Clipboard.ContainsText()) old = Clipboard.GetText(); } catch { }
-            // Snapshot the sequence BEFORE injecting keys; Electron apps write the clipboard asynchronously.
-            uint seq = GetClipboardSequenceNumber();
-            // Release whatever modifiers the hotkey holds down, then send a clean Ctrl+C.
-            keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-            keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-            keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-            Thread.Sleep(30);
-            keybd_event(VK_CONTROL, 0, 0, UIntPtr.Zero);
-            keybd_event(VK_C, 0, 0, UIntPtr.Zero);
-            keybd_event(VK_C, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-            keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-            string text = null;
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            while (sw.ElapsedMilliseconds < 900)
-            {
-                Thread.Sleep(15);
-                if (GetClipboardSequenceNumber() == seq) continue;
-                for (int r = 0; r < 5 && (text == null || text.Trim().Length == 0); r++)
-                {
-                    try { if (Clipboard.ContainsText()) text = Clipboard.GetText(); } catch { }
-                    if (text == null || text.Trim().Length == 0) Thread.Sleep(25);
-                }
-                break;
-            }
-            if (GetClipboardSequenceNumber() == seq) return null;              // nothing was copied; clipboard untouched, no restore needed
-            if (old != null && text != old) { try { Clipboard.SetDataObject(old, true, 10, 100); } catch { } }
-            return (text != null && text.Trim().Length > 0) ? text : null;
-        }
 
-        static string GetClipboardText()
-        {
-            try { if (Clipboard.ContainsText()) return Clipboard.GetText(); } catch { }
-            return null;
-        }
 
         void OnHotkey()
         {
@@ -887,7 +810,7 @@ namespace SesliOkuma
                 _lastPressTick = int.MinValue; _holdCandidate = false; _gesture.Stop();
                 if (_firstPressActive) { QueueSelection(); return; }
                 Reader.Stop(false);
-                string clip = GetClipboardText();
+                string clip = TextCapture.ClipboardText();
                 if (clip == null || clip.Trim().Length == 0) { Logger.Log("double press: clipboard empty"); return; }
                 Read(clip, "clipboard(2x)");
                 return;
@@ -920,15 +843,15 @@ namespace SesliOkuma
                 var sw = System.Diagnostics.Stopwatch.StartNew();
                 // Electron editors (VS Code family) expose only a small accessibility window through UIA,
                 // so a large selection comes back truncated there; go straight to the copy path.
-                bool preferCopy = IsCopyFirstApp();
+                bool preferCopy = TextCapture.IsCopyFirstApp();
                 string source = preferCopy ? "copy!" : "uia";
-                string text = preferCopy ? GetSelectionViaCopy() : GetSelectionViaUia(); long tUia = sw.ElapsedMilliseconds;
-                if (text == null) { source = "copy"; text = GetSelectionViaCopy(); }
+                string text = preferCopy ? TextCapture.SelectionViaCopy() : TextCapture.SelectionViaUia(); long tUia = sw.ElapsedMilliseconds;
+                if (text == null) { source = "copy"; text = TextCapture.SelectionViaCopy(); }
                 long tCopy = sw.ElapsedMilliseconds;
-                if (text == null) { source = "pointer"; text = GetParagraphUnderMouse(); }
-                if (text == null) { source = "clipboard"; text = GetClipboardText(); }
+                if (text == null) { source = "pointer"; text = TextCapture.ParagraphUnderPointer(); }
+                if (text == null) { source = "clipboard"; text = TextCapture.ClipboardText(); }
                 long tGet = sw.ElapsedMilliseconds;
-                if (text == null || text.Trim().Length == 0) { Logger.Log("no text app=" + ForegroundApp() + " (" + tGet + " ms)"); Announcer.Speak(L.T("NoTextToSave")); return; }
+                if (text == null || text.Trim().Length == 0) { Logger.Log("no text app=" + TextCapture.ForegroundApp() + " (" + tGet + " ms)"); Announcer.Speak(L.T("NoTextToSave")); return; }
                 Read(text, source + " t=" + tUia + "/" + tCopy + "/" + tGet + "ms");
             }
             catch (Exception ex) { Logger.Log("hotkey error: " + ex.Message); }
@@ -937,13 +860,13 @@ namespace SesliOkuma
 
         string GrabText()
         {
-            bool preferCopy = IsCopyFirstApp();
-            string src = preferCopy ? "copy!" : "uia"; string text = preferCopy ? GetSelectionViaCopy() : GetSelectionViaUia();
-            if (text == null) { src = "copy"; text = GetSelectionViaCopy(); }
-            if (text == null) { src = "pointer"; text = GetParagraphUnderMouse(); }
-            if (text == null) { src = "clipboard"; text = GetClipboardText(); }
+            bool preferCopy = TextCapture.IsCopyFirstApp();
+            string src = preferCopy ? "copy!" : "uia"; string text = preferCopy ? TextCapture.SelectionViaCopy() : TextCapture.SelectionViaUia();
+            if (text == null) { src = "copy"; text = TextCapture.SelectionViaCopy(); }
+            if (text == null) { src = "pointer"; text = TextCapture.ParagraphUnderPointer(); }
+            if (text == null) { src = "clipboard"; text = TextCapture.ClipboardText(); }
             bool ok = text != null && text.Trim().Length > 0;
-            Logger.Log("grab " + (ok ? src + " len=" + text.Length : "none") + " app=" + ForegroundApp());
+            Logger.Log("grab " + (ok ? src + " len=" + text.Length : "none") + " app=" + TextCapture.ForegroundApp());
             return ok ? text : null;
         }
 
@@ -988,7 +911,7 @@ namespace SesliOkuma
             if (resume > 0) { Logger.Log("resume at " + resume + "/" + norm.Length); Reader.StartAtNorm(text, v, resume); }
             else Reader.Start(text, v);
             Settings.CountWords(text);
-            Logger.Log("read " + source + " " + (primary ? Settings.PrimaryLang : "other") + " len=" + text.Length + " sentences=" + Reader.SentenceCount + " app=" + ForegroundApp());
+            Logger.Log("read " + source + " " + (primary ? Settings.PrimaryLang : "other") + " len=" + text.Length + " sentences=" + Reader.SentenceCount + " app=" + TextCapture.ForegroundApp());
         }
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
@@ -1023,6 +946,8 @@ namespace SesliOkuma
                 }
                 Application.ThreadException += delegate(object s, ThreadExceptionEventArgs e) { Logger.Log("ui error: " + e.Exception); try { AudioDuck.Set(false); } catch { } };
                 AppDomain.CurrentDomain.UnhandledException += delegate(object s, UnhandledExceptionEventArgs e) { Logger.Log("fatal: " + e.ExceptionObject); try { AudioDuck.Set(false); } catch { } };
+                EngineLog.Sink = Logger.Log;
+                EnginePaths.DataDir = AppSettings.DataDir;
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 var app = new TrayApp();

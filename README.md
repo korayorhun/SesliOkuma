@@ -37,6 +37,13 @@
 - **Accessibility extras** (under *Advanced*) — *read what the mouse points at*: rest the pointer on any button or text and it is spoken; high-contrast Windows themes are honored; a tiny words-read counter.
 - **Respectful** — per-user install, no admin rights, **no telemetry**; text goes only to the Windows speech provider (SAPI) you choose. MIT licensed.
 
+## For developers: SesliOkuma.Engine
+
+Everything above the tray icon lives in a separate, UI-free class library — text capture, the speech layer, SAPI and the offline Turkish voice, the reading session with word positions, screen OCR, translation, audio ducking. Use it from any .NET Framework 4.8 application:
+
+- NuGet: `SesliOkuma.Engine` (also attached to every [release](https://github.com/korayorhun/SesliOkuma/releases) as a `.nupkg`)
+- Package guide: [nuget/README.md](nuget/README.md) · minimal console sample: [samples/ReadAloudConsole](samples/ReadAloudConsole)
+- Build from source: `build.ps1` produces `SesliOkuma.Engine.dll` first, then the app on top of it. No SDK needed.
 ## Accessibility
 
 Sesli Okuma is built to work well for blind and low-vision users, following a screen-reader-first approach:
@@ -122,6 +129,13 @@ Windows 10/11 için küçük bir sistem tepsisi aracı: **herhangi bir uygulamad
 
 **Hakkında & destek:** dil menüsünün altındaki *Hakkında* kartında kaynak kod, sürüm notları, sorun bildirme ve isteğe bağlı **Destek ol ♥** (GitHub Sponsors, tek seferlik) bulunur.
 
+## Geliştiriciler için: SesliOkuma.Engine
+
+Tepsi simgesinin altındaki her şey ayrı, arayüzsüz bir kütüphanedir — metin yakalama, konuşma katmanı, SAPI ve çevrimdışı Türkçe ses, kelime konumlu okuma oturumu, ekran OCR, çeviri, ses kısma. Herhangi bir .NET Framework 4.8 uygulamasından kullanılabilir:
+
+- NuGet: `SesliOkuma.Engine` (her [sürüme](https://github.com/korayorhun/SesliOkuma/releases) `.nupkg` olarak da eklidir)
+- Paket rehberi: [nuget/README.md](nuget/README.md) · en küçük örnek: [samples/ReadAloudConsole](samples/ReadAloudConsole)
+- Kaynaktan derleme: `build.ps1` önce `SesliOkuma.Engine.dll`'i, sonra üstüne uygulamayı üretir. SDK gerekmez.
 ## Erişilebilirlik
 
 Sesli Okuma, görme engelli kullanıcılar için ekran okuyucu öncelikli yaklaşımla geliştirilmiştir:

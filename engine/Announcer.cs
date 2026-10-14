@@ -1,7 +1,7 @@
 using System;
 using System.Reflection;
 
-namespace SesliOkuma
+namespace SesliOkuma.Engine
 {
     // Short spoken status cues for events that have no visible window (accessibility mode only).
     // Uses its own SAPI voice so it never purges or pauses the main reading channel's queue,
@@ -31,7 +31,7 @@ namespace SesliOkuma
                     try { _voice.GetType().InvokeMember("Voice", BindingFlags.SetProperty, null, _voice, new object[] { VoiceToken }); } catch { }
                 _voice.GetType().InvokeMember("Speak", BindingFlags.InvokeMethod, null, _voice, new object[] { text, 3 });   // async + purge own queue
             }
-            catch (Exception ex) { _failed = true; Logger.Log("announcer: " + ex.Message); }
+            catch (Exception ex) { _failed = true; EngineLog.Log("announcer: " + ex.Message); }
         }
 
         public static bool IsBusy

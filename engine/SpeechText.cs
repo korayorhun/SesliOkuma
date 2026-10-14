@@ -5,7 +5,7 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace SesliOkuma
+namespace SesliOkuma.Engine
 {
     // The speech layer between the text on screen and the voice. What is spoken may differ from what is
     // shown (pronunciation dictionary, English words inside Turkish text, symbols such as ° and €, list
@@ -228,8 +228,15 @@ namespace SesliOkuma
             if (user != null && user.TryGetValue(key, out value)) return value + tail;
             if (!turkish) return core;
             if (BuiltIn.TryGetValue(key, out value)) return value + tail;
+            if (EnglishDictionary.TryGet(key, out value)) return value + tail;
             if (EnglishRespelling.LooksEnglish(key)) return EnglishRespelling.Respell(key) + tail;
             return core;
+        }
+
+        // Loads the big English dictionary off the UI thread so the first Turkish reading does not pay for it.
+        public static void WarmUp()
+        {
+            System.Threading.ThreadPool.QueueUserWorkItem(delegate { string v; EnglishDictionary.TryGet("warmup", out v); });
         }
 
         // Words Turkish voices read wrong because Turkish letters sound differently (c, w, j, silent e…).
@@ -322,6 +329,60 @@ reaksiyon realite ideal teorem ring sting king thai".Split(new[] { ' ', '\r', '\
         static bool IsVowel(char c) { return "aeiouy".IndexOf(c) >= 0; }
     }
 
+    // ~100k English words with the Turkish respelling of their CMU Pronouncing Dictionary reading, built by
+    // tools/english-respelling/make.py; Turkish words (zemberek-nlp lexicon) are left out there, so a Turkish
+    // word that happens to exist in English ("adam", "para") is never touched. Embedded gzip, loaded once.
+    static class EnglishDictionary
+    {
+        const string Resource = "english-respelling.txt.gz";
+        static readonly object Gate = new object();
+        static string[] _keys, _values;
+
+        public static bool TryGet(string key, out string value)
+        {
+            value = null;
+            if (_keys == null) Load();
+            if (_keys.Length == 0) return false;
+            int i = Array.BinarySearch(_keys, key, StringComparer.Ordinal);
+            if (i < 0) return false;
+            value = _values[i];
+            return true;
+        }
+
+        static void Load()
+        {
+            lock (Gate)
+            {
+                if (_keys != null) return;
+                var keys = new List<string>(100000);
+                var values = new List<string>(100000);
+                try
+                {
+                    using (var stream = typeof(EnglishDictionary).Assembly.GetManifestResourceStream(Resource))
+                    {
+                        if (stream != null)
+                            using (var gz = new System.IO.Compression.GZipStream(stream, System.IO.Compression.CompressionMode.Decompress))
+                            using (var reader = new StreamReader(gz, Encoding.UTF8))
+                            {
+                                string line;
+                                while ((line = reader.ReadLine()) != null)
+                                {
+                                    int tab = line.IndexOf('\t');
+                                    if (tab <= 0) continue;
+                                    keys.Add(line.Substring(0, tab));
+                                    values.Add(line.Substring(tab + 1));
+                                }
+                            }
+                    }
+                }
+                catch (Exception ex) { EngineLog.Log("english dictionary: " + ex.Message); }
+                _values = values.ToArray();
+                _keys = keys.ToArray();
+                if (_keys.Length > 0) EngineLog.Log("english dictionary: " + _keys.Length + " words");
+            }
+        }
+    }
+
     // %LOCALAPPDATA%\SesliOkuma\okunus.txt: the user's own "spelling = pronunciation" lines, for every voice.
     public static class UserDictionary
     {
@@ -329,7 +390,7 @@ reaksiyon realite ideal teorem ring sting king thai".Split(new[] { ' ', '\r', '\
         static DateTime _stamp = DateTime.MinValue;
         static bool _created;
 
-        public static string Path { get { return System.IO.Path.Combine(AppSettings.DataDir, "okunus.txt"); } }
+        public static string Path { get { return System.IO.Path.Combine(EnginePaths.DataDir, "okunus.txt"); } }
 
         public static Dictionary<string, string> Current
         {
@@ -341,7 +402,7 @@ reaksiyon realite ideal teorem ring sting king thai".Split(new[] { ' ', '\r', '\
                     DateTime stamp = File.GetLastWriteTimeUtc(Path);
                     if (stamp != _stamp) { _entries = Load(); _stamp = stamp; }
                 }
-                catch (Exception ex) { Logger.Log("okunus.txt: " + ex.Message); }
+                catch (Exception ex) { EngineLog.Log("okunus.txt: " + ex.Message); }
                 return _entries;
             }
         }
@@ -359,7 +420,7 @@ reaksiyon realite ideal teorem ring sting king thai".Split(new[] { ' ', '\r', '\
                 string value = line.Substring(eq + 1).Trim();
                 if (key.Length > 0 && key.IndexOf(' ') < 0 && value.Length > 0) dict[key] = value;
             }
-            if (dict.Count > 0) Logger.Log("okunus.txt: " + dict.Count + " entries");
+            if (dict.Count > 0) EngineLog.Log("okunus.txt: " + dict.Count + " entries");
             return dict;
         }
 
@@ -387,7 +448,7 @@ reaksiyon realite ideal teorem ring sting king thai".Split(new[] { ' ', '\r', '\
                 EnsureFile();
                 System.Diagnostics.Process.Start("notepad.exe", "\"" + Path + "\"");
             }
-            catch (Exception ex) { Logger.Log("okunus.txt open: " + ex.Message); }
+            catch (Exception ex) { EngineLog.Log("okunus.txt open: " + ex.Message); }
         }
     }
 }

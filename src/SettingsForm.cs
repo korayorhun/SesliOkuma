@@ -1,3 +1,4 @@
+using SesliOkuma.Engine;
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -119,7 +120,7 @@ namespace SesliOkuma
             _emaCard.Title = L.T("EmaTitle"); _emaCard.Text = L.T("EmaTitle"); _emaCard.Text2 = L.T("EmaText"); _emaCard.Note = L.T("EmaNote");
             _emaCard.ActionText = L.T("Install");
             _emaCard.Visible = false;
-            _emaInstaller = new EmaVoiceInstaller(this);
+            _emaInstaller = new EmaVoiceInstaller();
             _emaInstaller.Progress += delegate(int p) { _emaCard.SetProgress(p, L.F("EmaInstalling", p)); };
             _emaInstaller.Completed += delegate { _emaCard.SetIdle(); _app.RefreshVoices(); Relayout(); Flash(L.T("EmaDone")); };
             _emaInstaller.Failed += delegate(string msg) { _emaCard.SetIdle(); Flash(L.F("NaturalFailed", msg)); };

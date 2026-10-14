@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>SesliOkuma.Engine</id>
+    <version>$version$</version>
+    <title>Sesli Okuma Engine</title>
+    <authors>Koray Orhun</authors>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/korayorhun/SesliOkuma</projectUrl>
+    <repository type="git" url="https://github.com/korayorhun/SesliOkuma.git" />
+    <readme>docs\README.md</readme>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Read-aloud engine for Windows (.NET Framework 4.8, no UI framework): grabs the selected text from any app (UI Automation / copy / pointer / clipboard), turns screen text into speech-ready text (symbols, bullets, ALL-CAPS, English words inside Turkish text, user pronunciation dictionary), speaks it with SAPI voices or the offline Turkish neural voice (EMA Lightning on ONNX Runtime) with word-level positions, reads text off the screen with the built-in Windows OCR, translates with MyMemory/DeepL, and ducks other audio. The engine behind the free Sesli Okuma tray app.</description>
+    <summary>Read selected text aloud in any Windows app: text capture, speech layer, SAPI + offline Turkish voice, screen OCR, translation.</summary>
+    <tags>text-to-speech tts read-aloud turkish accessibility screen-reader ocr sapi onnx speech</tags>
+    <copyright>MIT License</copyright>
+  </metadata>
+  <files>
+    <file src="..\SesliOkuma.Engine.dll" target="lib\net48\" />
+    <file src="..\SesliOkuma.Engine.xml" target="lib\net48\" />
+    <file src="README.md" target="docs\" />
+  </files>
+</package>

@@ -8,7 +8,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace SesliOkuma
+namespace SesliOkuma.Engine
 {
     // Local Turkish neural voice: EMA Lightning (Canberk Aslan, Apache-2.0) + normalizer-tr (Erdem Tuna, Apache-2.0)
     // on ONNX Runtime, through the SesliOkuma.TrVoice bridge DLL. Everything lives in %LOCALAPPDATA%\SesliOkuma\ema,
@@ -29,7 +29,7 @@ namespace SesliOkuma
         static MethodInfo _mRate, _mInfo, _mPrepare, _mRange, _mSynth, _mWav;
         static LocalSession _preview;
 
-        public static string Dir { get { return Path.Combine(AppSettings.DataDir, "ema"); } }
+        public static string Dir { get { return Path.Combine(EnginePaths.DataDir, "ema"); } }
         static string ModelsDir { get { return Path.Combine(Dir, "models"); } }
 
         public static bool IsInstalled
@@ -80,15 +80,15 @@ namespace SesliOkuma
                     _mWav = _bridge.GetMethod("SynthToWav");
                     var sw = System.Diagnostics.Stopwatch.StartNew();
                     string error = (string)load.Invoke(null, new object[] { ModelsDir, 4 });
-                    if (!string.IsNullOrEmpty(error)) { _loadError = error; Logger.Log("ema load failed: " + error); return error; }
+                    if (!string.IsNullOrEmpty(error)) { _loadError = error; EngineLog.Log("ema load failed: " + error); return error; }
                     _loaded = true;
-                    Logger.Log("ema loaded in " + sw.ElapsedMilliseconds + " ms; " + Info);
+                    EngineLog.Log("ema loaded in " + sw.ElapsedMilliseconds + " ms; " + Info);
                     return null;
                 }
                 catch (Exception ex)
                 {
                     _loadError = ex.Message;
-                    Logger.Log("ema load failed: " + ex);
+                    EngineLog.Log("ema load failed: " + ex);
                     return _loadError;
                 }
             }
@@ -188,7 +188,7 @@ namespace SesliOkuma
             var format = new WAVEFORMATEX { wFormatTag = 1, nChannels = 1, nSamplesPerSec = rate, nAvgBytesPerSec = rate * 2, nBlockAlign = 2, wBitsPerSample = 16, cbSize = 0 };
             int result = waveOutOpen(out _handle, -1, ref format, IntPtr.Zero, IntPtr.Zero, 0);
             _open = result == 0;
-            if (!_open) Logger.Log("waveOutOpen failed: " + result);
+            if (!_open) EngineLog.Log("waveOutOpen failed: " + result);
         }
 
         public void Write(short[] samples)
@@ -308,7 +308,7 @@ namespace SesliOkuma
                 catch (Exception ex)
                 {
                     Error = ex.Message;
-                    Logger.Log("ema session: " + ex.Message);
+                    EngineLog.Log("ema session: " + ex.Message);
                 }
                 _done = true;
             });
@@ -361,18 +361,18 @@ namespace SesliOkuma
         }
     }
 
-    // Downloads and unpacks the voice package (one zip on GitHub Releases) into %LOCALAPPDATA%\SesliOkuma\ema.
+    /// <summary>Downloads and unpacks the voice package (one zip on GitHub Releases) into <see cref="LocalTrVoice.Dir"/>. Events are raised on the thread that created the installer.</summary>
     public sealed class EmaVoiceInstaller
     {
-        readonly System.Windows.Forms.Control _ui;
+        readonly SynchronizationContext _context;      // where Progress/Completed/Failed are raised (the creating thread)
         bool _busy;
         public event Action<int> Progress;
         public event Action Completed;
         public event Action<string> Failed;
 
-        public EmaVoiceInstaller(System.Windows.Forms.Control ui) { _ui = ui; }
+        public EmaVoiceInstaller() { _context = SynchronizationContext.Current; }
 
-        void Post(Action a) { try { if (_ui.IsHandleCreated) _ui.BeginInvoke(a); else a(); } catch { } }
+        void Post(Action a) { try { if (_context != null) _context.Post(delegate { a(); }, null); else a(); } catch { } }
 
         public void Start()
         {
@@ -391,8 +391,8 @@ namespace SesliOkuma
                 else { try { Extract(tmp); } catch (Exception ex) { err = ex.Message; } }
                 try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
                 _busy = false;
-                if (err != null) { Logger.Log("ema install failed: " + err); var hf = Failed; if (hf != null) Post(delegate { hf(err); }); }
-                else { Logger.Log("ema voice installed"); LocalTrVoice.WarmUpAsync(); var hc = Completed; if (hc != null) Post(delegate { hc(); }); }
+                if (err != null) { EngineLog.Log("ema install failed: " + err); var hf = Failed; if (hf != null) Post(delegate { hf(err); }); }
+                else { EngineLog.Log("ema voice installed"); LocalTrVoice.WarmUpAsync(); var hc = Completed; if (hc != null) Post(delegate { hc(); }); }
             };
             try { wc.DownloadFileAsync(new Uri(LocalTrVoice.PackageUrl), tmp); }
             catch (Exception ex) { _busy = false; var hf = Failed; if (hf != null) Post(delegate { hf(ex.Message); }); }

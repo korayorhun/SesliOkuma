@@ -4,7 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 
-namespace SesliOkuma
+namespace SesliOkuma.Engine
 {
     // Optional "lower other sounds while reading": other audio sessions go to 40% and come back afterwards.
     // Windows remembers per-app volume, so the originals are also written to disk: if the app ever dies while
@@ -17,7 +17,7 @@ namespace SesliOkuma
 
         sealed class DuckedSession { public string Id; public ISimpleAudioVolume Volume; public float Original, Ducked; }
 
-        static string StatePath { get { return Path.Combine(AppSettings.DataDir, "ducked.txt"); } }
+        static string StatePath { get { return Path.Combine(EnginePaths.DataDir, "ducked.txt"); } }
 
         public static void Set(bool duck)
         {
@@ -28,7 +28,7 @@ namespace SesliOkuma
                     if (duck) Apply();
                     else Restore();
                 }
-                catch (Exception ex) { Logger.Log("duck: " + ex.Message); try { Restore(); } catch { } }
+                catch (Exception ex) { EngineLog.Log("duck: " + ex.Message); try { Restore(); } catch { } }
             }
         }
 
@@ -84,7 +84,7 @@ namespace SesliOkuma
                 File.WriteAllLines(StatePath, lines.ToArray());
             }
             catch { }
-            Logger.Log("ducked " + list.Count + " sessions");
+            EngineLog.Log("ducked " + list.Count + " sessions");
         }
 
         static void Restore()
@@ -96,7 +96,7 @@ namespace SesliOkuma
             foreach (var s in list)
                 try { if (s.Volume.SetMasterVolume(s.Original, Guid.Empty) == 0) restored++; } catch { }
             try { if (File.Exists(StatePath)) File.Delete(StatePath); } catch { }
-            if (list.Count > 0) Logger.Log("restored " + restored + "/" + list.Count + " sessions");
+            if (list.Count > 0) EngineLog.Log("restored " + restored + "/" + list.Count + " sessions");
         }
 
         // A previous run ended while other apps were lowered: put back the ones still sitting at our ducked level.
@@ -125,9 +125,9 @@ namespace SesliOkuma
                         if (Math.Abs(current - levels[1]) < 0.03f && volume.SetMasterVolume(levels[0], Guid.Empty) == 0) fixedCount++;
                     });
                     File.Delete(StatePath);
-                    Logger.Log("duck recovery: restored " + fixedCount + " sessions");
+                    EngineLog.Log("duck recovery: restored " + fixedCount + " sessions");
                 }
-                catch (Exception ex) { Logger.Log("duck recovery: " + ex.Message); }
+                catch (Exception ex) { EngineLog.Log("duck recovery: " + ex.Message); }
             }
         }
 

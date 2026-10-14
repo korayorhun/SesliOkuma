@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
 
-namespace SesliOkuma
+namespace SesliOkuma.Engine
 {
     public enum VoiceProvider { Sapi, Local }
 
@@ -39,7 +39,7 @@ namespace SesliOkuma
                 _type = Type.GetTypeFromProgID("SAPI.SpVoice");
                 _voice = Activator.CreateInstance(_type);
             }
-            catch (Exception ex) { Logger.Log("SAPI init failed: " + ex.Message); }
+            catch (Exception ex) { EngineLog.Log("SAPI init failed: " + ex.Message); }
         }
 
         static object Get(object o, string prop) { return o.GetType().InvokeMember(prop, BindingFlags.GetProperty, null, o, null); }
@@ -77,9 +77,9 @@ namespace SesliOkuma
                     local.Description = "Ema - Turkish (Natural, offline)";
                     _voices.Insert(0, local);
                 }
-                Logger.Log("voices: " + _voices.Count);
+                EngineLog.Log("voices: " + _voices.Count);
             }
-            catch (Exception ex) { Logger.Log("GetVoices failed: " + ex.Message); }
+            catch (Exception ex) { EngineLog.Log("GetVoices failed: " + ex.Message); }
         }
 
         static void Parse(VoiceInfo v, string langHex)
