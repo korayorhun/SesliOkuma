@@ -20,3 +20,4 @@ Thumbs.db
 /SesliOkuma.Engine.dll
 /SesliOkuma.Engine.xml
 /tools/nuget/
+/samples/**/bin/

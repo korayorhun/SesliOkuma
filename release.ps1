@@ -71,7 +71,7 @@ try {
   $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json))
   $previous = gh api repos/korayorhun/scoop-bucket/contents/bucket/sesliokuma.json --jq .sha 2>$null
   $apiArgs = @('-X', 'PUT', 'repos/korayorhun/scoop-bucket/contents/bucket/sesliokuma.json',
-    '-f', "message=sesliokuma: Update to version $Version`n`nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>", '-f', "content=$b64")
+    '-f', "message=sesliokuma: Update to version $Version`n`nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>", '-f', "content=$b64")
   if ($previous) { $apiArgs += @('-f', "sha=$previous") }
   gh api @apiArgs --jq .commit.sha | Out-Null
   Write-Host "scoop bucket updated to $Version"
