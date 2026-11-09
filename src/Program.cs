@@ -167,7 +167,15 @@ namespace SesliOkuma
             SyncHover();
 
             NaturalInstaller = new NaturalVoicesInstaller(this);
-            NaturalInstaller.Completed += delegate { RefreshVoices(); };
+            NaturalInstaller.Completed += delegate
+            {
+                Engine.MarkOnlineVoicesUp();
+                RefreshVoices();
+                // The previous adapter DLL stays mapped in this process; only a fresh process gets the updated voices.
+                if (NaturalInstaller.RestartNeeded) { _tray.ShowBalloonTip(4000, "Sesli Okuma", L.T("NaturalRestart"), ToolTipIcon.Info); RestartSelf(); }
+            };
+            Engine.OnlineVoicesChanged += delegate { UpdateAnnouncerVoice(); if (_settings != null && !_settings.IsDisposed) _settings.SyncFromApp(); };
+            Reader.VoiceFailed += OnVoiceFailed;
         }
 
         void ApplyTexts()
@@ -234,14 +242,43 @@ namespace SesliOkuma
             Logger.Log("voices ready; primary=" + Settings.PrimaryLang + " voice=" + (PrimaryVoice != null ? PrimaryVoice.Name : "-") + " other=" + (OtherVoice != null ? OtherVoice.Name : "-"));
         }
 
+        // A cloud voice went silent mid-read: say which voice took over and, when we installed the adapter, offer its update.
+        void OnVoiceFailed(VoiceInfo failed, VoiceInfo replacement)
+        {
+            string text = replacement != null ? L.F("VoiceSilent", failed.ShortName, replacement.ShortName) : L.F("VoiceSilentNone", failed.ShortName);
+            bool ours = NaturalVoicesInstaller.InstalledVersion != null;
+            if (ours) text += "\n" + L.T("NaturalUpdateHint");
+            Logger.Log("balloon: " + text.Replace("\n", " "));
+            _balloonAction = ours ? new Action(delegate { ShowSettings(); }) : null;
+            _balloonActionUtc = DateTime.UtcNow;
+            _tray.ShowBalloonTip(8000, "Sesli Okuma", text, ToolTipIcon.Warning);
+            if (ours) NaturalInstaller.CheckLatestAsync(null);
+            if (replacement == null) Announcer.Speak(text);
+        }
+
+        // Restarts after an in-place DLL update: the new process starts once this one has released the single-instance mutex.
+        void RestartSelf()
+        {
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("cmd.exe", "/c ping -n 3 127.0.0.1 >nul & start \"\" \"" + Application.ExecutablePath + "\"")
+                { UseShellExecute = false, CreateNoWindow = true };
+                System.Diagnostics.Process.Start(psi);
+            }
+            catch (Exception ex) { Logger.Log("restart failed: " + ex.Message); }
+            Application.Exit();
+        }
+
         // Status cues follow the UI language with a SAPI voice (instant); the local voice is only a fallback,
-        // so announcements never come out in the wrong language again.
+        // so announcements never come out in the wrong language again. Cloud voices are skipped while they are silent.
         public void UpdateAnnouncerVoice()
         {
             VoiceInfo natural = null, classic = null, multi = null;
+            bool skipOnline = Engine.OnlineVoicesDown;
             foreach (var v in Engine.Voices)
             {
                 if (v.Provider != VoiceProvider.Sapi) continue;
+                if (skipOnline && v.IsOnline) continue;
                 if (v.Lang2 == L.Lang) { if (v.IsNatural) { if (natural == null || (natural.IsMultilingual && !v.IsMultilingual)) natural = v; } else if (classic == null) classic = v; }
                 else if (v.IsMultilingual && v.IsNatural && multi == null) multi = v;
             }
@@ -260,6 +297,14 @@ namespace SesliOkuma
 
         public VoiceInfo PrimaryVoice { get { return Engine.FindById(Settings.PrimaryVoiceId); } }
         public VoiceInfo OtherVoice { get { return Engine.FindById(Settings.OtherVoiceId); } }
+
+        // The configured voice for the text's language, or its stand-in while the cloud voices are known to be silent.
+        VoiceInfo PickVoice(bool primary)
+        {
+            VoiceInfo v = primary ? (PrimaryVoice ?? OtherVoice) : (OtherVoice ?? PrimaryVoice);
+            if (v != null && v.IsOnline && Engine.OnlineVoicesDown) { var alt = Engine.FallbackFor(v); if (alt != null) v = alt; }
+            return v;
+        }
 
         bool _lastSpeechWasHover;
 
@@ -585,7 +630,7 @@ namespace SesliOkuma
         void ReadEdited(string text, int offset)
         {
             bool primary = TextLanguage.IsPrimary(text, Settings.PrimaryLang);
-            VoiceInfo v = primary ? (PrimaryVoice ?? OtherVoice) : (OtherVoice ?? PrimaryVoice);
+            VoiceInfo v = PickVoice(primary);
             Reader.StartAt(text, v, offset);
             Logger.Log("read edited len=" + text.Length + " off=" + offset);
         }
@@ -619,7 +664,7 @@ namespace SesliOkuma
                 _hoverSpoken = name;
                 _lastSpeechWasHover = true;
                 bool primary = TextLanguage.IsPrimary(name, Settings.PrimaryLang);
-                Engine.Speak(name, primary ? (PrimaryVoice ?? OtherVoice) : (OtherVoice ?? PrimaryVoice), Settings.Rate);
+                Engine.Speak(name, PickVoice(primary), Settings.Rate);
             }
             catch (Exception ex) { Logger.Log("hover: " + ex.Message); }
         }
@@ -875,7 +920,7 @@ namespace SesliOkuma
             string text = GrabText();
             if (text == null) { _tray.ShowBalloonTip(4000, "Sesli Okuma", L.T("NoTextToSave"), ToolTipIcon.Warning); return; }
             bool primary = TextLanguage.IsPrimary(text, Settings.PrimaryLang);
-            VoiceInfo v = primary ? (PrimaryVoice ?? OtherVoice) : (OtherVoice ?? PrimaryVoice);
+            VoiceInfo v = PickVoice(primary);
             string suggested = text.Trim(); if (suggested.Length > 40) suggested = suggested.Substring(0, 40);
             foreach (char bad in System.IO.Path.GetInvalidFileNameChars()) suggested = suggested.Replace(bad, ' ');
             using (var dlg = new SaveFileDialog { Filter = "WAV|*.wav", FileName = suggested.Trim() + ".wav", Title = L.T("SaveAudio") })
@@ -900,7 +945,7 @@ namespace SesliOkuma
         {
             Announcer.Silence();
             bool primary = TextLanguage.IsPrimary(text, Settings.PrimaryLang);
-            VoiceInfo v = primary ? (PrimaryVoice ?? OtherVoice) : (OtherVoice ?? PrimaryVoice);
+            VoiceInfo v = PickVoice(primary);
             _barHidden = false;
             // The same long text read again continues where it was stopped - unless it is re-read right away,
             // which means "again from the start".
@@ -948,6 +993,7 @@ namespace SesliOkuma
                 AppDomain.CurrentDomain.UnhandledException += delegate(object s, UnhandledExceptionEventArgs e) { Logger.Log("fatal: " + e.ExceptionObject); try { AudioDuck.Set(false); } catch { } };
                 EngineLog.Sink = Logger.Log;
                 EnginePaths.DataDir = AppSettings.DataDir;
+                NaturalVoicesInstaller.CleanupOld();
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 var app = new TrayApp();

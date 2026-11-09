@@ -18,6 +18,9 @@ namespace SesliOkuma.Engine
         public object Token;
 
         public bool IsNatural { get { return Description.IndexOf("Natural", StringComparison.OrdinalIgnoreCase) >= 0; } }
+        // Cloud voices served through NaturalVoiceSAPIAdapter ("Microsoft X Online (Natural)"). They fail together when
+        // the service or the adapter breaks, unlike classic voices or natural voices installed on the machine.
+        public bool IsOnline { get { return Provider == VoiceProvider.Sapi && Description.IndexOf("Online", StringComparison.OrdinalIgnoreCase) >= 0; } }
         public bool IsMultilingual { get { return Name.IndexOf("Multilingual", StringComparison.OrdinalIgnoreCase) >= 0; } }
         public string ShortName { get { return IsMultilingual ? Name.Replace("Multilingual", "") : Name; } }
     }
@@ -31,6 +34,38 @@ namespace SesliOkuma.Engine
 
         public IList<VoiceInfo> Voices { get { return _voices; } }
         public bool IsAvailable { get { return _voice != null; } }
+
+        static readonly TimeSpan OnlineRetryAfter = TimeSpan.FromMinutes(10);
+        DateTime _onlineDownSince = DateTime.MinValue;
+
+        /// <summary>True while the cloud voices are known to produce no audio (set by the Reader's silence detection).</summary>
+        /// <remarks>Expires after ten minutes, so a transient outage does not hide the voices for the whole session.</remarks>
+        public bool OnlineVoicesDown { get { return _onlineDownSince != DateTime.MinValue && DateTime.UtcNow - _onlineDownSince < OnlineRetryAfter; } }
+        public event Action OnlineVoicesChanged;
+
+        public void MarkOnlineVoicesDown()
+        {
+            bool was = OnlineVoicesDown;
+            _onlineDownSince = DateTime.UtcNow;
+            if (!was && OnlineVoicesChanged != null) OnlineVoicesChanged();
+        }
+
+        public void MarkOnlineVoicesUp()
+        {
+            bool was = OnlineVoicesDown;
+            _onlineDownSince = DateTime.MinValue;
+            if (was && OnlineVoicesChanged != null) OnlineVoicesChanged();
+        }
+
+        /// <summary>The voice to continue with when <paramref name="failed"/> produced no audio: the best remaining voice
+        /// of the same language, else any voice that does not depend on the cloud, else null.</summary>
+        public VoiceInfo FallbackFor(VoiceInfo failed)
+        {
+            VoiceInfo alt = failed != null ? BestFor(failed.Lang2) : null;
+            if (alt != null && alt != failed && !(alt.IsOnline && OnlineVoicesDown)) return alt;
+            foreach (var v in _voices) if (v != failed && !v.IsOnline) return v;
+            return null;
+        }
 
         public SpeechEngine()
         {
@@ -125,12 +160,15 @@ namespace SesliOkuma.Engine
             return null;
         }
 
-        // Best voice for a language: natural > multilingual natural > classic.
+        // Best voice for a language: local > natural > multilingual natural > classic. Cloud voices are skipped while
+        // they are known to be silent.
         public VoiceInfo BestFor(string lang2)
         {
             VoiceInfo local = null, natural = null, classic = null, multi = null;
+            bool skipOnline = OnlineVoicesDown;
             foreach (var v in _voices)
             {
+                if (skipOnline && v.IsOnline) continue;
                 if (v.Lang2 == lang2)
                 {
                     if (v.Provider == VoiceProvider.Local) { if (local == null) local = v; }
@@ -273,13 +311,35 @@ namespace SesliOkuma.Engine
         {
             string ps = ScriptOfLanguage(primaryLang2), ts = ScriptOfText(text);
             if (ps != ts) return false;
-            if (primaryLang2 == "tr")
-            {
-                const string trChars = "çğışöüÇĞİŞÖÜ";
-                foreach (char c in trChars) if (text.IndexOf(c) >= 0) return true;
-                return false;
-            }
+            if (primaryLang2 == "tr") return LooksTurkish(text);
             return true;
+        }
+
+        static readonly char[] TurkishLetters = "çğışöüÇĞİŞÖÜ".ToCharArray();
+        static readonly char[] WordTrim = { '.', ',', ';', ':', '!', '?', '"', '\'', '(', ')', '[', ']', '\u00ab', '\u00bb', '\u201c', '\u201d', '-', '\u2026' };
+        static readonly HashSet<string> TurkishWords = new HashSet<string>(new[] {
+            "ve", "bir", "bu", "için", "ile", "olarak", "daha", "çok", "gibi", "kadar", "ama", "veya", "şu", "ancak", "sonra",
+            "önce", "değil", "var", "yok", "biz", "siz", "sen", "olan", "ise", "diye", "ilgili", "tarafından", "üzerinde", "arasında" });
+        static readonly HashSet<string> EnglishWords = new HashSet<string>(new[] {
+            "the", "and", "of", "to", "is", "are", "you", "your", "for", "with", "that", "this", "we", "our", "from", "will",
+            "have", "has", "not", "be", "by", "it", "or", "as", "can", "was", "were", "they", "their", "there", "which", "would",
+            "should", "please", "thank", "thanks", "dear", "hello", "regards", "if", "any", "all", "an" });
+
+        // Turkish-only letters are the strongest signal, but one Turkish name inside an English mail must not win:
+        // words carrying such letters plus Turkish function words are weighed against English function words.
+        public static bool LooksTurkish(string text)
+        {
+            int trHits = 0, enHits = 0;
+            foreach (string raw in text.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                string w = raw.Trim(WordTrim);
+                if (w.Length == 0) continue;
+                if (w.IndexOfAny(TurkishLetters) >= 0) { trHits++; continue; }
+                string lower = w.ToLowerInvariant();
+                if (TurkishWords.Contains(lower)) trHits++;
+                else if (EnglishWords.Contains(lower)) enHits++;
+            }
+            return trHits > 0 && trHits >= enHits;
         }
     }
 }

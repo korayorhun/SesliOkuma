@@ -19,6 +19,7 @@ namespace SesliOkuma
         readonly Panel _adv = new Panel();
         readonly ActionCard _updateCard = new ActionCard { ShowDismiss = true };
         readonly ActionCard _naturalCard = new ActionCard();
+        bool _naturalChecked;                 // the adapter release lookup was started for this form
         readonly ActionCard _emaCard = new ActionCard();
         EmaVoiceInstaller _emaInstaller;
         readonly ActionCard _barCard = new ActionCard();
@@ -313,7 +314,25 @@ namespace SesliOkuma
         {
             var u = _app.Updater.Available;
             bool showUpdate = u != null && u.Version.ToString(3) != _app.Settings.SkipVersion;
-            bool showNatural = !_app.Engine.HasNaturalVoices || _naturalCard.Busy;
+            if (!_naturalChecked && NaturalVoicesInstaller.InstalledVersion != null)
+            {
+                _naturalChecked = true;
+                _app.NaturalInstaller.CheckLatestAsync(delegate { if (!IsDisposed) Relayout(); });
+            }
+            // The card doubles as the update offer when the adapter we installed is outdated or its voices went silent.
+            bool naturalUpdate = !_naturalCard.Busy && NaturalVoicesInstaller.InstalledVersion != null && (_app.NaturalInstaller.UpdateAvailable || _app.Engine.OnlineVoicesDown);
+            bool showNatural = !_app.Engine.HasNaturalVoices || _naturalCard.Busy || naturalUpdate;
+            if (naturalUpdate)
+            {
+                _naturalCard.Title = L.T("NaturalUpdateTitle"); _naturalCard.Text = _naturalCard.Title;
+                _naturalCard.Text2 = _app.NaturalInstaller.UpdateAvailable ? L.F("NaturalUpdateText", NaturalVoicesInstaller.InstalledVersion, _app.NaturalInstaller.LatestVersion) : L.T("NaturalDownText");
+                _naturalCard.ActionText = L.T("Update");
+            }
+            else if (!_naturalCard.Busy)
+            {
+                _naturalCard.Title = L.T("NaturalTitle"); _naturalCard.Text = _naturalCard.Title; _naturalCard.Text2 = L.T("NaturalText");
+                _naturalCard.ActionText = L.T("Install");
+            }
             bool showBar = _app.Reader.Active && _app.BarHiddenByUser;
             int y = HeaderH;
             if (showBar)

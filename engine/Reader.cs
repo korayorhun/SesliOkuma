@@ -23,6 +23,9 @@ namespace SesliOkuma.Engine
         int _streamA = -1, _streamB = -1;
         DateTime _launched, _lastSpeaking;
         bool _sawSpeaking;
+        bool _sawWord;                        // a word position arrived for the current SAPI utterance
+        int _baseWordPos, _baseWordLen;       // SAPI status right after Speak; a stale value from the previous utterance
+        int _fromOffset;                      // on-screen offset the current utterance started from
         VoiceInfo _voice;
         LocalSession _local;                  // non-null while the local (Ema) voice is reading
 
@@ -36,6 +39,7 @@ namespace SesliOkuma.Engine
         public event Action Position;         // word position advanced (highlight)
         public event Action Finished;
         public event Action<bool> Completed;           // true = reached the end; false = stopped by the user
+        public event Action<VoiceInfo, VoiceInfo> VoiceFailed;   // (voice that produced no audio, replacement or null)
         public int LastStopOffset { get; private set; }
         public static Action<bool> PauseAnnounce;   // accessibility mode: true = paused, false = resumed
 
@@ -80,7 +84,7 @@ namespace SesliOkuma.Engine
             Stop(false);
             _full = Normalize(text);
             if (_full.Length == 0) return;
-            _voice = voice;
+            _voice = Usable(voice);
             BuildMap();
             int off = Math.Max(0, Math.Min(normOffset, _full.Length - 1));
             while (off > 0 && !char.IsWhiteSpace(_full[off - 1])) off--;
@@ -95,7 +99,7 @@ namespace SesliOkuma.Engine
             Stop(false);
             _full = Normalize(text);
             if (_full.Length == 0) return;
-            _voice = voice;
+            _voice = Usable(voice);
             BuildMap();
             int startOff = MapOffset(text, rawOffset);
             _sentences.Clear(); _sentences.AddRange(Spans(_full));
@@ -115,6 +119,17 @@ namespace SesliOkuma.Engine
 
         int _localBase;                       // spoken-text offset where the local session's text starts
 
+        // A cloud voice that is known to be silent is replaced before anything is spoken, so the caller's choice does
+        // not cost another silent wait; the stand-in is announced in the log only (no VoiceFailed: nothing failed now).
+        VoiceInfo Usable(VoiceInfo voice)
+        {
+            if (voice == null || !voice.IsOnline || !_engine.OnlineVoicesDown) return voice;
+            var alt = _engine.FallbackFor(voice);
+            if (alt == null) return voice;
+            EngineLog.Log("cloud voice " + voice.Name + " is down; using " + alt.Name);
+            return alt;
+        }
+
         // The speech layer depends on the voice's language (English words are respelled for Turkish voices only).
         void BuildMap()
         {
@@ -130,6 +145,7 @@ namespace SesliOkuma.Engine
             if (sOff >= spoken.Length || spoken.Substring(sOff).Trim().Length == 0) { EngineLog.Log("reader: nothing left to speak from " + offset); Stop(true); return; }
             string rest = spoken.Substring(sOff);
             _launched = DateTime.UtcNow; _lastSpeaking = DateTime.UtcNow; _sawSpeaking = false;
+            _sawWord = false; _fromOffset = offset;
             _streamB = -1;
             if (_local != null) { _local.Dispose(); _local = null; }
             if (IsLocal)
@@ -164,8 +180,29 @@ namespace SesliOkuma.Engine
                     _segAOffset = sOff;
                     _streamA = _engine.Speak(rest, _voice, _rate());
                 }
+                _baseWordPos = _engine.WordPosition; _baseWordLen = _engine.WordLength;
             }
             catch (Exception ex) { EngineLog.Log("reader speak: " + ex.Message); }
+        }
+
+        // An online voice ran to its end without reporting a single word: the adapter or the service returned no audio
+        // (seen when NaturalVoiceSAPIAdapter lagged behind a Microsoft endpoint change, November 2026). Continues from
+        // the same spot with a voice that does not depend on the cloud; classic voices are never second-guessed.
+        bool SilentVoice()
+        {
+            if (_voice == null || !_voice.IsOnline) return false;
+            int ms = (int)(DateTime.UtcNow - _launched).TotalMilliseconds;
+            _engine.MarkOnlineVoicesDown();
+            var failed = _voice;
+            var alt = _engine.FallbackFor(failed);
+            EngineLog.Log("voice " + failed.Name + " produced no audio in " + ms + " ms; " + (alt != null ? "switching to " + alt.Name : "no other voice"));
+            if (alt == null) { Stop(false); if (VoiceFailed != null) VoiceFailed(failed, null); return true; }
+            _voice = alt;
+            BuildMap();
+            SpeakFrom(_fromOffset, false);
+            if (VoiceFailed != null) VoiceFailed(failed, alt);
+            if (Changed != null) Changed();
+            return true;
         }
 
         // Current absolute character index within _full, from the engine's word position.
@@ -242,16 +279,27 @@ namespace SesliOkuma.Engine
             if (!Paused)
             {
                 bool speaking = _engine.IsSpeaking;
+                if (!_sawWord)
+                {
+                    int wl = _engine.WordLength;
+                    if (wl > 0 && (wl != _baseWordLen || _engine.WordPosition != _baseWordPos)) _sawWord = true;
+                }
                 if (speaking)
                 {
                     if (!_sawSpeaking) EngineLog.Log("time-to-audio " + (int)(DateTime.UtcNow - _launched).TotalMilliseconds + " ms");
                     _sawSpeaking = true; _lastSpeaking = DateTime.UtcNow;
+                    // The lead-in chunk is over and not one word was reported for it: the voice is silent.
+                    if (!_sawWord && _streamB >= 0 && _engine.CurrentStream == _streamB && SilentVoice()) return;
                 }
                 else
                 {
                     double idle = (DateTime.UtcNow - _lastSpeaking).TotalMilliseconds;
                     double total = (DateTime.UtcNow - _launched).TotalMilliseconds;
-                    if ((_sawSpeaking && idle > 1200) || (!_sawSpeaking && total > 15000)) { Stop(true); return; }
+                    if ((_sawSpeaking && idle > 1200) || (!_sawSpeaking && total > 15000))
+                    {
+                        if (!_sawWord && SilentVoice()) return;
+                        Stop(true); return;
+                    }
                 }
             }
             int idx = CharIndex;
